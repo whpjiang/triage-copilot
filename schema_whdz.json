@@ -1,0 +1,1052 @@
+{
+  "database": "whdz",
+  "tables": [
+    {
+      "table_name": "care_pathway",
+      "columns": [
+        {
+          "column_name": "pathway_id",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_key": "PRI",
+          "extra": "auto_increment",
+          "column_comment": ""
+        },
+        {
+          "column_name": "crowd_code",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "MUL",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "stage",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": "first_visit/eval/followup/rehab"
+        },
+        {
+          "column_name": "title",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "recommended_standard_codes",
+          "data_type": "varchar",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": "逗号分隔"
+        },
+        {
+          "column_name": "recommended_functional_codes",
+          "data_type": "varchar",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": "逗号分隔"
+        },
+        {
+          "column_name": "must_have_crowd_codes",
+          "data_type": "varchar",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": "逗号分隔"
+        },
+        {
+          "column_name": "prep_list",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": "就诊准备清单（可JSON）"
+        },
+        {
+          "column_name": "red_flags",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": "红旗症状（可JSON）"
+        },
+        {
+          "column_name": "is_active",
+          "data_type": "tinyint",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "datetime",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "DEFAULT_GENERATED",
+          "column_comment": ""
+        },
+        {
+          "column_name": "updated_at",
+          "data_type": "datetime",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP(3)",
+          "column_comment": ""
+        }
+      ]
+    },
+    {
+      "table_name": "dict_crowd_specialty",
+      "columns": [
+        {
+          "column_name": "code",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "PRI",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "name",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "sort_no",
+          "data_type": "int",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "is_active",
+          "data_type": "tinyint",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "datetime",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "DEFAULT_GENERATED",
+          "column_comment": ""
+        },
+        {
+          "column_name": "updated_at",
+          "data_type": "datetime",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP(3)",
+          "column_comment": ""
+        }
+      ]
+    },
+    {
+      "table_name": "dict_functional_clinic",
+      "columns": [
+        {
+          "column_name": "code",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "PRI",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "name",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "sort_no",
+          "data_type": "int",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "is_active",
+          "data_type": "tinyint",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "datetime",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "DEFAULT_GENERATED",
+          "column_comment": ""
+        },
+        {
+          "column_name": "updated_at",
+          "data_type": "datetime",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP(3)",
+          "column_comment": ""
+        }
+      ]
+    },
+    {
+      "table_name": "dict_standard_dept",
+      "columns": [
+        {
+          "column_name": "code",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "PRI",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "name",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "parent_code",
+          "data_type": "varchar",
+          "is_nullable": "YES",
+          "column_key": "MUL",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "sort_no",
+          "data_type": "int",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "is_active",
+          "data_type": "tinyint",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "datetime",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "DEFAULT_GENERATED",
+          "column_comment": ""
+        },
+        {
+          "column_name": "updated_at",
+          "data_type": "datetime",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP(3)",
+          "column_comment": ""
+        }
+      ]
+    },
+    {
+      "table_name": "dict_tag_alias",
+      "columns": [
+        {
+          "column_name": "id",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_key": "PRI",
+          "extra": "auto_increment",
+          "column_comment": ""
+        },
+        {
+          "column_name": "tag_type",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "MUL",
+          "extra": "",
+          "column_comment": "standard/functional/crowd"
+        },
+        {
+          "column_name": "tag_code",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "alias_text",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "MUL",
+          "extra": "",
+          "column_comment": "同义词/别名/口语化"
+        },
+        {
+          "column_name": "weight",
+          "data_type": "decimal",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "is_active",
+          "data_type": "tinyint",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "datetime",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "DEFAULT_GENERATED",
+          "column_comment": ""
+        }
+      ]
+    },
+    {
+      "table_name": "doctor",
+      "columns": [
+        {
+          "column_name": "doctor_id",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_key": "PRI",
+          "extra": "auto_increment",
+          "column_comment": ""
+        },
+        {
+          "column_name": "doctor_code",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "UNI",
+          "extra": "",
+          "column_comment": "内部唯一编码（建议：医院+姓名+科室hash）"
+        },
+        {
+          "column_name": "hospital_id",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_key": "MUL",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "service_unit_id",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_key": "MUL",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "name_raw",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "name_norm",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "MUL",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "title",
+          "data_type": "varchar",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": "主任医师/副主任医师等"
+        },
+        {
+          "column_name": "intro_text",
+          "data_type": "mediumtext",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "specialty_text",
+          "data_type": "mediumtext",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": "擅长原文"
+        },
+        {
+          "column_name": "crowd_limit",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": "child/pregnant/elderly/unlimited/unknown"
+        },
+        {
+          "column_name": "is_active",
+          "data_type": "tinyint",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "source_platform",
+          "data_type": "varchar",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "source_url",
+          "data_type": "varchar",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "crawl_time",
+          "data_type": "datetime",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "datetime",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "DEFAULT_GENERATED",
+          "column_comment": ""
+        },
+        {
+          "column_name": "updated_at",
+          "data_type": "datetime",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP(3)",
+          "column_comment": ""
+        }
+      ]
+    },
+    {
+      "table_name": "hospital",
+      "columns": [
+        {
+          "column_name": "hospital_id",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_key": "PRI",
+          "extra": "auto_increment",
+          "column_comment": ""
+        },
+        {
+          "column_name": "hospital_code",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "UNI",
+          "extra": "",
+          "column_comment": "内部唯一编码（可用UUID/爬虫ID映射）"
+        },
+        {
+          "column_name": "name_raw",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "name_norm",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "MUL",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "hospital_level",
+          "data_type": "varchar",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": "三甲/三乙/二甲/专科等"
+        },
+        {
+          "column_name": "hospital_type",
+          "data_type": "varchar",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": "综合/中医/妇幼/儿童/专科"
+        },
+        {
+          "column_name": "province",
+          "data_type": "varchar",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "city",
+          "data_type": "varchar",
+          "is_nullable": "YES",
+          "column_key": "MUL",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "district",
+          "data_type": "varchar",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "address_norm",
+          "data_type": "varchar",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "lat",
+          "data_type": "decimal",
+          "is_nullable": "YES",
+          "column_key": "MUL",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "lng",
+          "data_type": "decimal",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "has_emergency",
+          "data_type": "tinyint",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "has_fever_clinic",
+          "data_type": "tinyint",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "reg_entry_url",
+          "data_type": "varchar",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "reg_entry_phone",
+          "data_type": "varchar",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "source_platform",
+          "data_type": "varchar",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "source_url",
+          "data_type": "varchar",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "crawl_time",
+          "data_type": "datetime",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "is_active",
+          "data_type": "tinyint",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "datetime",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "DEFAULT_GENERATED",
+          "column_comment": ""
+        },
+        {
+          "column_name": "updated_at",
+          "data_type": "datetime",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP(3)",
+          "column_comment": ""
+        }
+      ]
+    },
+    {
+      "table_name": "hospital_campus",
+      "columns": [
+        {
+          "column_name": "campus_id",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_key": "PRI",
+          "extra": "auto_increment",
+          "column_comment": ""
+        },
+        {
+          "column_name": "hospital_id",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_key": "MUL",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "campus_code",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "UNI",
+          "extra": "",
+          "column_comment": "院区内部编码"
+        },
+        {
+          "column_name": "campus_name_raw",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "campus_name_norm",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "address_norm",
+          "data_type": "varchar",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "lat",
+          "data_type": "decimal",
+          "is_nullable": "YES",
+          "column_key": "MUL",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "lng",
+          "data_type": "decimal",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "reg_entry_url",
+          "data_type": "varchar",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "reg_entry_phone",
+          "data_type": "varchar",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "is_active",
+          "data_type": "tinyint",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "datetime",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "DEFAULT_GENERATED",
+          "column_comment": ""
+        },
+        {
+          "column_name": "updated_at",
+          "data_type": "datetime",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP(3)",
+          "column_comment": ""
+        }
+      ]
+    },
+    {
+      "table_name": "service_unit",
+      "columns": [
+        {
+          "column_name": "service_unit_id",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_key": "PRI",
+          "extra": "auto_increment",
+          "column_comment": ""
+        },
+        {
+          "column_name": "service_unit_code",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "UNI",
+          "extra": "",
+          "column_comment": "内部唯一编码（建议：医院+原始科室IDhash）"
+        },
+        {
+          "column_name": "hospital_id",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_key": "MUL",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "campus_id",
+          "data_type": "bigint",
+          "is_nullable": "YES",
+          "column_key": "MUL",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "name_raw",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "name_norm",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "MUL",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "unit_type",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": "dept/clinic/center/ward/mdt/other"
+        },
+        {
+          "column_name": "outpatient_flag",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": "outpatient/inpatient/both/unknown"
+        },
+        {
+          "column_name": "intro_text",
+          "data_type": "mediumtext",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "reg_entry_url",
+          "data_type": "varchar",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "reg_entry_phone",
+          "data_type": "varchar",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "source_platform",
+          "data_type": "varchar",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "source_url",
+          "data_type": "varchar",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "crawl_time",
+          "data_type": "datetime",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "is_active",
+          "data_type": "tinyint",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "datetime",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "DEFAULT_GENERATED",
+          "column_comment": ""
+        },
+        {
+          "column_name": "updated_at",
+          "data_type": "datetime",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP(3)",
+          "column_comment": ""
+        }
+      ]
+    },
+    {
+      "table_name": "service_unit_capability",
+      "columns": [
+        {
+          "column_name": "id",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_key": "PRI",
+          "extra": "auto_increment",
+          "column_comment": ""
+        },
+        {
+          "column_name": "service_unit_id",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_key": "MUL",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "capability_code",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": "能力编码（如CGA/TRANSPLANT_FOLLOWUP等）"
+        },
+        {
+          "column_name": "capability_name",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "support_level",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": "strong/medium/weak"
+        },
+        {
+          "column_name": "confidence",
+          "data_type": "decimal",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "source",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "datetime",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "DEFAULT_GENERATED",
+          "column_comment": ""
+        }
+      ]
+    },
+    {
+      "table_name": "service_unit_tag_map",
+      "columns": [
+        {
+          "column_name": "id",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_key": "PRI",
+          "extra": "auto_increment",
+          "column_comment": ""
+        },
+        {
+          "column_name": "service_unit_id",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_key": "MUL",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "tag_type",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "MUL",
+          "extra": "",
+          "column_comment": "standard/functional/crowd"
+        },
+        {
+          "column_name": "tag_code",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "weight",
+          "data_type": "decimal",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": "推荐权重0~1"
+        },
+        {
+          "column_name": "confidence",
+          "data_type": "decimal",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": "标注置信度0~1"
+        },
+        {
+          "column_name": "source",
+          "data_type": "varchar",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "",
+          "column_comment": "rule/llm/manual/import"
+        },
+        {
+          "column_name": "reason",
+          "data_type": "varchar",
+          "is_nullable": "YES",
+          "column_key": "",
+          "extra": "",
+          "column_comment": ""
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "datetime",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "DEFAULT_GENERATED",
+          "column_comment": ""
+        },
+        {
+          "column_name": "updated_at",
+          "data_type": "datetime",
+          "is_nullable": "NO",
+          "column_key": "",
+          "extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP(3)",
+          "column_comment": ""
+        }
+      ]
+    }
+  ]
+}

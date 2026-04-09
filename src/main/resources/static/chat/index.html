@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Triage Copilot Chat</title>
+    <link rel="stylesheet" href="chat.css">
+</head>
+<body>
+<div class="app">
+    <header class="app-header">
+        <h1>Triage Copilot</h1>
+        <p>Describe your symptoms, duration, and special conditions. I will provide triage guidance.</p>
+    </header>
+
+    <main id="messageList" class="message-list" aria-live="polite">
+        <div class="message bot">
+            Hello, I am your triage assistant. Tell me your main symptoms.
+        </div>
+    </main>
+
+    <form id="chatForm" class="chat-form">
+        <label class="sr-only" for="messageInput">Input message</label>
+        <textarea id="messageInput" rows="2" maxlength="1200" placeholder="Example: Fever 38.5C for two days with cough and sore throat." required></textarea>
+        <div class="chat-actions">
+            <span id="statusText" class="status-text">Press Enter to send, Shift + Enter for a new line</span>
+            <button id="sendBtn" type="submit">Send</button>
+        </div>
+    </form>
+</div>
+
+<script src="chat.js"></script>
+</body>
+</html>
