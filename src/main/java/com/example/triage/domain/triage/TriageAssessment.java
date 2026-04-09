@@ -9,6 +9,7 @@ import java.util.List;
 
 public record TriageAssessment(
         PopulationProfile populationProfile,
+        List<String> pathwayTags,
         List<DiseaseCandidate> candidateDiseases,
         List<CapabilityRecommendation> capabilityRecommendations,
         List<DepartmentRecommendation> departmentRecommendations,

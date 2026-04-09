@@ -20,22 +20,25 @@ public class TriageExplanationService {
     }
 
     public String explain(PopulationProfile profile,
+                          List<String> pathwayTags,
                           List<DiseaseCandidate> diseases,
                           List<CapabilityRecommendation> capabilities,
                           List<DepartmentRecommendation> departments) {
         String structured = """
                 已按结构化链路完成初步分诊：
                 - 人群画像：性别=%s，年龄=%s，年龄段=%s，标签=%s
+                - 场景路径：%s
                 - 疾病候选：%s
                 - 医学能力：%s
                 - 本地科室：%s
-                以上结果先经过年龄、性别和特殊人群约束过滤，再将标准医学能力映射到本地真实科室。
+                以上结果先经过年龄、性别、特殊人群和路径标签约束，再将标准医学能力映射到本地真实科室。
                 如出现进行性加重、高热不退、意识异常或剧烈疼痛，应及时线下急诊就医。
                 """.formatted(
                 profile.gender(),
                 profile.age(),
                 profile.ageGroup().name().toLowerCase(),
                 String.join("、", profile.crowdTags()),
+                pathwayTags.isEmpty() ? "general_pathway" : String.join("、", pathwayTags),
                 diseases.stream().map(d -> d.diseaseName() + "(" + round2(d.score()) + ")").collect(Collectors.joining("；")),
                 capabilities.stream().map(c -> c.capabilityName() + "(" + round2(c.score()) + ")").collect(Collectors.joining("；")),
                 departments.stream().map(d -> d.hospitalName() + "-" + d.departmentName()).collect(Collectors.joining("；"))

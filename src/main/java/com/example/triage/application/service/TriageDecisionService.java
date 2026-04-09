@@ -14,17 +14,20 @@ import java.util.List;
 public class TriageDecisionService {
 
     private final PopulationProfileService populationProfileService;
+    private final PathwayTagService pathwayTagService;
     private final DiseaseCandidateService diseaseCandidateService;
     private final MedicalCapabilityService medicalCapabilityService;
     private final LocalDepartmentMappingService localDepartmentMappingService;
     private final TriageExplanationService triageExplanationService;
 
     public TriageDecisionService(PopulationProfileService populationProfileService,
+                                 PathwayTagService pathwayTagService,
                                  DiseaseCandidateService diseaseCandidateService,
                                  MedicalCapabilityService medicalCapabilityService,
                                  LocalDepartmentMappingService localDepartmentMappingService,
                                  TriageExplanationService triageExplanationService) {
         this.populationProfileService = populationProfileService;
+        this.pathwayTagService = pathwayTagService;
         this.diseaseCandidateService = diseaseCandidateService;
         this.medicalCapabilityService = medicalCapabilityService;
         this.localDepartmentMappingService = localDepartmentMappingService;
@@ -33,10 +36,11 @@ public class TriageDecisionService {
 
     public TriageAssessment assess(TriageAssessRequest request) {
         PopulationProfile profile = populationProfileService.buildProfile(request);
+        List<String> pathwayTags = pathwayTagService.inferPathwayTags(request.getSymptoms(), profile);
         List<DiseaseCandidate> diseases = diseaseCandidateService.identifyCandidates(request.getSymptoms(), profile);
-        List<CapabilityRecommendation> capabilities = medicalCapabilityService.recommendCapabilities(diseases, profile);
+        List<CapabilityRecommendation> capabilities = medicalCapabilityService.recommendCapabilities(diseases, profile, pathwayTags);
         List<DepartmentRecommendation> departments = localDepartmentMappingService.mapDepartments(capabilities, profile, request.getCity());
-        String explanation = triageExplanationService.explain(profile, diseases, capabilities, departments);
-        return new TriageAssessment(profile, diseases, capabilities, departments, explanation);
+        String explanation = triageExplanationService.explain(profile, pathwayTags, diseases, capabilities, departments);
+        return new TriageAssessment(profile, pathwayTags, diseases, capabilities, departments, explanation);
     }
 }

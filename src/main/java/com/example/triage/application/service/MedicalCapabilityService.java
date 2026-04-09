@@ -32,7 +32,7 @@ public class MedicalCapabilityService {
         this.diseaseNormalizeService = diseaseNormalizeService;
     }
 
-    public List<CapabilityRecommendation> recommendCapabilities(List<DiseaseCandidate> diseases, PopulationProfile profile) {
+    public List<CapabilityRecommendation> recommendCapabilities(List<DiseaseCandidate> diseases, PopulationProfile profile, List<String> pathwayTags) {
         List<String> diseaseCodes = diseases.stream().map(DiseaseCandidate::diseaseCode).toList();
         List<DiseaseCapabilityRelationRecord> relations = diseaseDataRepository.findRelationsByDiseaseCodes(diseaseCodes);
         Map<String, DiseaseCandidate> diseaseMap = diseases.stream().collect(Collectors.toMap(DiseaseCandidate::diseaseCode, Function.identity()));
@@ -52,6 +52,7 @@ public class MedicalCapabilityService {
             if (!requiredCrowds.isEmpty() && profile.crowdTags().stream().noneMatch(requiredCrowds::contains)) {
                 continue;
             }
+            List<String> capabilityPathways = diseaseNormalizeService.parseList(capability.pathwayTagsJson());
             double score = 0D;
             List<String> matchedDiseases = new ArrayList<>();
             for (DiseaseCapabilityRelationRecord rel : entry.getValue()) {
@@ -61,6 +62,20 @@ public class MedicalCapabilityService {
                 }
                 score += disease.score() * (rel.priorityScore() == null ? 1D : rel.priorityScore());
                 matchedDiseases.add(disease.diseaseName());
+            }
+            if (!capabilityPathways.isEmpty()) {
+                long matchedPathwayCount = pathwayTags.stream().filter(capabilityPathways::contains).count();
+                if (matchedPathwayCount > 0) {
+                    score += matchedPathwayCount * 2.5;
+                } else if ("SPECIAL_PATHWAY".equals(capability.capabilityType())) {
+                    score = score * 0.75;
+                }
+            }
+            if ("SUBSPECIALTY".equals(capability.capabilityType())) {
+                score += 1.2;
+            }
+            if ("SPECIAL_POPULATION".equals(capability.capabilityType()) && !requiredCrowds.isEmpty()) {
+                score += 0.8;
             }
             output.add(new CapabilityRecommendation(
                     capability.capabilityCode(),

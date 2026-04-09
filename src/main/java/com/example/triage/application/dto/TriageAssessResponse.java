@@ -6,6 +6,7 @@ import java.util.List;
 public class TriageAssessResponse {
 
     private PopulationProfileDto populationProfile;
+    private List<String> pathwayTags = new ArrayList<>();
     private List<DiseaseCandidateDto> candidateDiseases = new ArrayList<>();
     private List<CapabilityRecommendationDto> capabilityRecommendations = new ArrayList<>();
     private List<DepartmentRecommendationDto> departmentRecommendations = new ArrayList<>();
@@ -25,6 +26,14 @@ public class TriageAssessResponse {
 
     public void setCandidateDiseases(List<DiseaseCandidateDto> candidateDiseases) {
         this.candidateDiseases = candidateDiseases;
+    }
+
+    public List<String> getPathwayTags() {
+        return pathwayTags;
+    }
+
+    public void setPathwayTags(List<String> pathwayTags) {
+        this.pathwayTags = pathwayTags;
     }
 
     public List<CapabilityRecommendationDto> getCapabilityRecommendations() {

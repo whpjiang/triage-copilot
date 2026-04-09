@@ -24,6 +24,7 @@ public class TriageDecisionOrchestrator {
         profileDto.setAgeGroup(assessment.populationProfile().ageGroup().name().toLowerCase());
         profileDto.setCrowdTags(assessment.populationProfile().crowdTags());
         response.setPopulationProfile(profileDto);
+        response.setPathwayTags(assessment.pathwayTags());
         response.setCandidateDiseases(assessment.candidateDiseases().stream().map(item -> {
             TriageAssessResponse.DiseaseCandidateDto dto = new TriageAssessResponse.DiseaseCandidateDto();
             dto.setDiseaseCode(item.diseaseCode());
