@@ -1,9 +1,11 @@
 package com.example.triagecopilot.controller;
 
+import com.example.triage.application.dto.TriageAssessRequest;
+import com.example.triage.application.dto.TriageAssessResponse;
+import com.example.triage.application.orchestrator.TriageDecisionOrchestrator;
 import com.example.triagecopilot.common.ApiResponse;
 import com.example.triagecopilot.dto.TriageAnalyzeRequest;
 import com.example.triagecopilot.dto.TriageAnalyzeResponse;
-import com.example.triagecopilot.service.TriageAgentService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -14,25 +16,35 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/triage")
 public class TriageController {
 
-    private final TriageAgentService triageAgentService;
+    private final TriageDecisionOrchestrator triageDecisionOrchestrator;
 
-    public TriageController(TriageAgentService triageAgentService) {
-        this.triageAgentService = triageAgentService;
+    public TriageController(TriageDecisionOrchestrator triageDecisionOrchestrator) {
+        this.triageDecisionOrchestrator = triageDecisionOrchestrator;
     }
 
     @PostMapping("/analyze")
     public ApiResponse<TriageAnalyzeResponse> analyze(@Valid @RequestBody TriageAnalyzeRequest request) {
-        try {
-            return ApiResponse.success(triageAgentService.analyze(request));
-        } catch (Exception ex) {
-            TriageAnalyzeResponse fallback = new TriageAnalyzeResponse();
-            fallback.setRecommendedDepartment("General Internal Medicine");
-            fallback.setRecommendedFunctionalClinic("General Clinic");
-            fallback.setUrgencyLevel("MEDIUM");
-            fallback.setUrgencyReason("Temporary service exception.");
-            fallback.setAdvice("Please retry in a moment.");
-            fallback.setDisclaimer("This suggestion cannot replace clinical diagnosis.");
-            return ApiResponse.success(fallback);
-        }
+        TriageAssessRequest assessRequest = new TriageAssessRequest();
+        assessRequest.setSymptoms(request.getSymptoms());
+        assessRequest.setAge(request.getAge());
+        assessRequest.setGender(request.getGender());
+        assessRequest.setCity(request.getCity());
+        assessRequest.setSpecialCondition(request.getSpecialCondition());
+
+        TriageAssessResponse assessResponse = triageDecisionOrchestrator.assess(assessRequest);
+        TriageAnalyzeResponse legacy = new TriageAnalyzeResponse();
+        legacy.setRecommendedDepartment(assessResponse.getCapabilityRecommendations().isEmpty()
+                ? "-"
+                : assessResponse.getCapabilityRecommendations().get(0).getCapabilityName());
+        legacy.setRecommendedFunctionalClinic(assessResponse.getDepartmentRecommendations().isEmpty()
+                ? "-"
+                : assessResponse.getDepartmentRecommendations().get(0).getDepartmentName());
+        legacy.setUrgencyLevel(assessResponse.getCandidateDiseases().isEmpty()
+                ? "MEDIUM"
+                : assessResponse.getCandidateDiseases().get(0).getUrgencyLevel().toUpperCase());
+        legacy.setUrgencyReason("Legacy analyze endpoint is now backed by the structured triage pipeline.");
+        legacy.setAdvice(assessResponse.getExplanation());
+        legacy.setDisclaimer("This suggestion cannot replace clinical diagnosis.");
+        return ApiResponse.success(legacy);
     }
 }
