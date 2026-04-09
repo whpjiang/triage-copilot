@@ -1,0 +1,162 @@
+package com.example.triage.infrastructure.persistence.repository;
+
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
+import org.springframework.stereotype.Repository;
+
+import java.sql.PreparedStatement;
+import java.sql.Statement;
+import java.util.List;
+import java.util.Map;
+
+@Repository
+public class BaseDataAdminRepository {
+
+    private final JdbcTemplate jdbcTemplate;
+
+    public BaseDataAdminRepository(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    public long createImportJob(String datasetType, String fileName) {
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcTemplate.update(connection -> {
+            PreparedStatement ps = connection.prepareStatement(
+                    "insert into import_job_record(dataset_type, file_name, status, success_count, failure_count, review_count) values (?, ?, ?, 0, 0, 0)",
+                    Statement.RETURN_GENERATED_KEYS
+            );
+            ps.setString(1, datasetType);
+            ps.setString(2, fileName);
+            ps.setString(3, "PROCESSING");
+            return ps;
+        }, keyHolder);
+        return extractGeneratedId(keyHolder);
+    }
+
+    public void finishImportJob(long jobId, int successCount, int failureCount, int reviewCount, String status, String message) {
+        jdbcTemplate.update(
+                "update import_job_record set success_count = ?, failure_count = ?, review_count = ?, status = ?, message = ?, update_time = current_timestamp where id = ?",
+                successCount, failureCount, reviewCount, status, message, jobId
+        );
+    }
+
+    public void addFailure(long jobId, int rowNumber, String rawContent, String errorMessage) {
+        jdbcTemplate.update(
+                "insert into import_failure_log(job_id, row_number, raw_content, error_message) values (?, ?, ?, ?)",
+                jobId, rowNumber, rawContent, errorMessage
+        );
+    }
+
+    public void addReviewItem(long jobId, String datasetType, String itemKey, String issueType, String rawContent, String suggestion) {
+        jdbcTemplate.update(
+                "insert into import_review_item(job_id, dataset_type, item_key, issue_type, raw_content, suggestion, resolved) values (?, ?, ?, ?, ?, ?, 0)",
+                jobId, datasetType, itemKey, issueType, rawContent, suggestion
+        );
+    }
+
+    public void upsertDisease(String diseaseCode, String diseaseName, String aliasesJson, String symptomKeywords, String genderRule,
+                              Integer ageMin, Integer ageMax, String ageGroup, String urgencyLevel, String reviewStatus) {
+        Integer exists = jdbcTemplate.queryForObject("select count(1) from disease_master where disease_code = ?", Integer.class, diseaseCode);
+        if (exists != null && exists > 0) {
+            jdbcTemplate.update("""
+                    update disease_master
+                    set disease_name = ?, aliases_json = ?, symptom_keywords = ?, gender_rule = ?, age_min = ?, age_max = ?, age_group = ?, urgency_level = ?, review_status = ?, update_time = current_timestamp
+                    where disease_code = ?
+                    """, diseaseName, aliasesJson, symptomKeywords, genderRule, ageMin, ageMax, ageGroup, urgencyLevel, reviewStatus, diseaseCode);
+        } else {
+            jdbcTemplate.update("""
+                    insert into disease_master(disease_code, disease_name, aliases_json, symptom_keywords, gender_rule, age_min, age_max, age_group, urgency_level, review_status, deleted)
+                    values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                    """, diseaseCode, diseaseName, aliasesJson, symptomKeywords, genderRule, ageMin, ageMax, ageGroup, urgencyLevel, reviewStatus);
+        }
+    }
+
+    public void replaceDiseaseAliases(String diseaseCode, List<String> aliases) {
+        jdbcTemplate.update("delete from disease_alias where disease_code = ?", diseaseCode);
+        for (String alias : aliases) {
+            jdbcTemplate.update(
+                    "insert into disease_alias(disease_code, alias_name, alias_type, source) values (?, ?, ?, ?)",
+                    diseaseCode, alias, "imported", "base-data-import"
+            );
+        }
+    }
+
+    public long upsertHospital(String hospitalCode, String hospitalName, String city) {
+        List<Long> ids = jdbcTemplate.query("select id from hospital where hospital_code = ?", (rs, rowNum) -> rs.getLong("id"), hospitalCode);
+        if (!ids.isEmpty()) {
+            Long id = ids.get(0);
+            jdbcTemplate.update("update hospital set hospital_name = ?, city = ?, update_time = current_timestamp where id = ?", hospitalName, city, id);
+            return id;
+        }
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcTemplate.update(connection -> {
+            PreparedStatement ps = connection.prepareStatement(
+                    "insert into hospital(hospital_code, hospital_name, city, active_status, deleted) values (?, ?, ?, 1, 0)",
+                    Statement.RETURN_GENERATED_KEYS
+            );
+            ps.setString(1, hospitalCode);
+            ps.setString(2, hospitalName);
+            ps.setString(3, city);
+            return ps;
+        }, keyHolder);
+        return extractGeneratedId(keyHolder);
+    }
+
+    public long upsertDepartment(long hospitalId, String departmentName, String parentDepartmentName, String intro,
+                                 String scope, String genderRule, Integer ageMin, Integer ageMax, String crowdTagsJson) {
+        List<Long> ids = jdbcTemplate.query(
+                "select id from hospital_department where hospital_id = ? and department_name = ? and deleted = 0",
+                (rs, rowNum) -> rs.getLong("id"),
+                hospitalId, departmentName
+        );
+        if (!ids.isEmpty()) {
+            Long id = ids.get(0);
+            jdbcTemplate.update("""
+                    update hospital_department
+                    set parent_department_name = ?, department_intro = ?, service_scope = ?, gender_rule = ?, age_min = ?, age_max = ?, crowd_tags_json = ?, update_time = current_timestamp
+                    where id = ?
+                    """, parentDepartmentName, intro, scope, genderRule, ageMin, ageMax, crowdTagsJson, id);
+            return id;
+        }
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcTemplate.update(connection -> {
+            PreparedStatement ps = connection.prepareStatement(
+                    "insert into hospital_department(hospital_id, department_name, parent_department_name, department_intro, service_scope, active_status, deleted, gender_rule, age_min, age_max, crowd_tags_json) values (?, ?, ?, ?, ?, 1, 0, ?, ?, ?, ?)",
+                    Statement.RETURN_GENERATED_KEYS
+            );
+            ps.setLong(1, hospitalId);
+            ps.setString(2, departmentName);
+            ps.setString(3, parentDepartmentName);
+            ps.setString(4, intro);
+            ps.setString(5, scope);
+            ps.setString(6, genderRule);
+            ps.setObject(7, ageMin);
+            ps.setObject(8, ageMax);
+            ps.setString(9, crowdTagsJson);
+            return ps;
+        }, keyHolder);
+        return extractGeneratedId(keyHolder);
+    }
+
+    public Map<String, Integer> aggregateCounts() {
+        Integer diseases = jdbcTemplate.queryForObject("select count(1) from disease_master where deleted = 0", Integer.class);
+        Integer pending = jdbcTemplate.queryForObject("select count(1) from import_review_item where resolved = 0", Integer.class);
+        return Map.of(
+                "diseases", diseases == null ? 0 : diseases,
+                "pending", pending == null ? 0 : pending
+        );
+    }
+
+    private long extractGeneratedId(KeyHolder keyHolder) {
+        if (keyHolder.getKeyList().isEmpty()) {
+            return 0L;
+        }
+        Object id = keyHolder.getKeyList().get(0).get("id");
+        if (id instanceof Number number) {
+            return number.longValue();
+        }
+        Number fallback = keyHolder.getKey();
+        return fallback == null ? 0L : fallback.longValue();
+    }
+}
