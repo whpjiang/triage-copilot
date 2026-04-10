@@ -18,13 +18,19 @@ public class BaseDataImportService {
     private final TabularDataReader tabularDataReader;
     private final BaseDataAdminRepository baseDataAdminRepository;
     private final DiseaseNormalizeService diseaseNormalizeService;
+    private final DepartmentCapabilityAutoMappingService departmentCapabilityAutoMappingService;
+    private final WuhanImportAdapterService wuhanImportAdapterService;
 
     public BaseDataImportService(TabularDataReader tabularDataReader,
                                  BaseDataAdminRepository baseDataAdminRepository,
-                                 DiseaseNormalizeService diseaseNormalizeService) {
+                                 DiseaseNormalizeService diseaseNormalizeService,
+                                 DepartmentCapabilityAutoMappingService departmentCapabilityAutoMappingService,
+                                 WuhanImportAdapterService wuhanImportAdapterService) {
         this.tabularDataReader = tabularDataReader;
         this.baseDataAdminRepository = baseDataAdminRepository;
         this.diseaseNormalizeService = diseaseNormalizeService;
+        this.departmentCapabilityAutoMappingService = departmentCapabilityAutoMappingService;
+        this.wuhanImportAdapterService = wuhanImportAdapterService;
     }
 
     public BaseDataImportResponse importData(String datasetType, MultipartFile file) throws Exception {
@@ -37,18 +43,19 @@ public class BaseDataImportService {
         try {
             List<Map<String, String>> rows = tabularDataReader.read(file);
             int rowNumber = 1;
-            for (Map<String, String> row : rows) {
+            for (Map<String, String> sourceRow : rows) {
                 rowNumber++;
                 try {
-                    if ("disease".equals(normalizedType)) {
+                    Map<String, String> row = wuhanImportAdapterService.adapt(normalizedType, sourceRow);
+                    if (isDiseaseDataset(normalizedType)) {
                         review += importDiseaseRow(jobId, row);
                     } else {
-                        review += importDepartmentRow(jobId, row);
+                        review += importDepartmentRow(jobId, row, normalizedType);
                     }
                     success++;
                 } catch (Exception ex) {
                     failure++;
-                    baseDataAdminRepository.addFailure(jobId, rowNumber, row.toString(), ex.getMessage());
+                    baseDataAdminRepository.addFailure(jobId, rowNumber, sourceRow.toString(), ex.getMessage());
                 }
             }
             String summary = "Imported " + success + " rows, failures " + failure + ", reviews " + review;
@@ -94,16 +101,16 @@ public class BaseDataImportService {
         int review = 0;
         if (symptoms.isEmpty()) {
             review++;
-            baseDataAdminRepository.addReviewItem(jobId, "disease", diseaseCode, "MISSING_SYMPTOM_KEYWORDS", row.toString(), "补充症状关键词");
+            baseDataAdminRepository.addReviewItem(jobId, "disease", diseaseCode, "MISSING_SYMPTOM_KEYWORDS", row.toString(), "请补充症状关键词");
         }
         if (!StringUtils.hasText(row.get("standard_dept_hint"))) {
             review++;
-            baseDataAdminRepository.addReviewItem(jobId, "disease", diseaseCode, "MISSING_STANDARD_DEPT_HINT", row.toString(), "补充疾病到标准医学能力的人工映射");
+            baseDataAdminRepository.addReviewItem(jobId, "disease", diseaseCode, "MISSING_STANDARD_DEPT_HINT", row.toString(), "请补充疾病到医学能力的映射线索");
         }
         return review;
     }
 
-    private int importDepartmentRow(long jobId, Map<String, String> row) {
+    private int importDepartmentRow(long jobId, Map<String, String> row, String datasetType) {
         String hospitalName = require(row, "hospital_name");
         String departmentName = require(row, "department_name");
         String city = firstNonBlank(row.get("city"), "本地");
@@ -119,12 +126,51 @@ public class BaseDataImportService {
                 parseInteger(row.get("age_max")),
                 diseaseNormalizeService.toJsonArray(diseaseNormalizeService.parseList(row.get("crowd_tags")))
         );
-        baseDataAdminRepository.addReviewItem(jobId, "department", String.valueOf(departmentId), "WAIT_CAPABILITY_MAPPING", row.toString(), "为该本地科室补充医学能力映射");
-        return 1;
+
+        int review = 0;
+        List<DepartmentCapabilityAutoMappingService.CapabilityMappingSuggestion> suggestions =
+                departmentCapabilityAutoMappingService.suggest(
+                        departmentName,
+                        row.get("parent_department_name"),
+                        row.get("service_scope"),
+                        row.get("department_intro")
+                );
+        int mappedCount = 0;
+        for (DepartmentCapabilityAutoMappingService.CapabilityMappingSuggestion suggestion : suggestions) {
+            if (!baseDataAdminRepository.capabilityExists(suggestion.capabilityCode())) {
+                continue;
+            }
+            baseDataAdminRepository.upsertDepartmentCapabilityRelation(
+                    departmentId,
+                    suggestion.capabilityCode(),
+                    suggestion.supportLevel(),
+                    suggestion.weight(),
+                    datasetType.startsWith("wuhan_") ? "wuhan-auto-rule" : "import-auto-rule"
+            );
+            mappedCount++;
+        }
+        if (mappedCount == 0) {
+            review++;
+            baseDataAdminRepository.addReviewItem(jobId, "department", String.valueOf(departmentId), "WAIT_CAPABILITY_MAPPING", row.toString(), "请为本地科室补充医学能力映射");
+        } else if (mappedCount > 1) {
+            review++;
+            baseDataAdminRepository.addReviewItem(jobId, "department", String.valueOf(departmentId), "AUTO_MAPPING_NEEDS_REVIEW", row.toString(), "自动映射了多个医学能力，请人工复核");
+        }
+        return review;
+    }
+
+    private boolean isDiseaseDataset(String datasetType) {
+        return "disease".equals(datasetType) || "wuhan_disease".equals(datasetType);
     }
 
     private String normalizeDatasetType(String datasetType) {
         String value = datasetType == null ? "" : datasetType.trim().toLowerCase(Locale.ROOT);
+        if ("wuhan_department".equals(value) || "wuhan_hospital_department".equals(value)) {
+            return "wuhan_department";
+        }
+        if ("wuhan_disease".equals(value)) {
+            return "wuhan_disease";
+        }
         if ("department".equals(value) || "hospital_department".equals(value)) {
             return "department";
         }
@@ -151,13 +197,19 @@ public class BaseDataImportService {
     }
 
     private String inferAgeGroup(Integer ageMin, Integer ageMax) {
-        if (ageMax != null && ageMax <= 14) {
+        if (ageMax != null && ageMax <= 11) {
             return "child";
+        }
+        if (ageMin != null && ageMin >= 12 && ageMax != null && ageMax <= 17) {
+            return "adolescent";
         }
         if (ageMin != null && ageMin >= 65) {
             return "elderly";
         }
-        return "adult";
+        if (ageMin != null && ageMin >= 18) {
+            return "adult";
+        }
+        return "all";
     }
 
     private String buildCode(String text) {

@@ -34,7 +34,7 @@ class TriageFlowIntegrationTest {
         assertThat(response.getDepartmentRecommendations()).extracting(TriageAssessResponse.DepartmentRecommendationDto::getDepartmentName)
                 .contains("儿科门诊", "儿童发热门诊");
         assertThat(response.getDoctorRecommendations()).extracting(TriageAssessResponse.DoctorRecommendationDto::getDoctorName)
-                .contains("张小安");
+                .contains("张小宁");
     }
 
     @Test
@@ -52,7 +52,7 @@ class TriageFlowIntegrationTest {
         assertThat(response.getDepartmentRecommendations()).extracting(TriageAssessResponse.DepartmentRecommendationDto::getDepartmentName)
                 .contains("老年病科", "记忆障碍门诊");
         assertThat(response.getDoctorRecommendations()).extracting(TriageAssessResponse.DoctorRecommendationDto::getDoctorName)
-                .contains("周记忆");
+                .contains("周忆安");
     }
 
     @Test
@@ -87,7 +87,7 @@ class TriageFlowIntegrationTest {
         assertThat(spineResponse.getDepartmentRecommendations()).extracting(TriageAssessResponse.DepartmentRecommendationDto::getDepartmentName)
                 .contains("脊柱外科门诊", "脊柱疼痛专病门诊");
         assertThat(spineResponse.getDoctorRecommendations()).extracting(TriageAssessResponse.DoctorRecommendationDto::getDoctorName)
-                .contains("李脊康");
+                .contains("李脊衡");
 
         TriageAssessRequest transplant = new TriageAssessRequest();
         transplant.setSymptoms("移植术后异常复查");
@@ -101,7 +101,7 @@ class TriageFlowIntegrationTest {
         assertThat(transplantResponse.getDepartmentRecommendations()).extracting(TriageAssessResponse.DepartmentRecommendationDto::getDepartmentName)
                 .contains("器官移植随访门诊");
         assertThat(transplantResponse.getDoctorRecommendations()).extracting(TriageAssessResponse.DoctorRecommendationDto::getDoctorName)
-                .contains("王移植");
+                .contains("王移宁");
     }
 
     @Test
@@ -119,6 +119,6 @@ class TriageFlowIntegrationTest {
         assertThat(response.getDepartmentRecommendations()).extracting(TriageAssessResponse.DepartmentRecommendationDto::getDepartmentName)
                 .contains("男科门诊", "男性排尿异常门诊");
         assertThat(response.getDoctorRecommendations()).extracting(TriageAssessResponse.DoctorRecommendationDto::getDoctorName)
-                .contains("陈泌宁");
+                .contains("陈泌安");
     }
 }

@@ -41,11 +41,11 @@ class DiseaseCandidateServiceTest {
                 "approved"
         );
         when(diseaseDataRepository.findApprovedDiseases()).thenReturn(List.of(spineDisease));
-        when(aiDiseaseRecallClient.suggestDiseaseCodes(eq("腰腿发麻，怀疑腰椎问题"), any(), anyList(), anyList()))
+        when(aiDiseaseRecallClient.suggestDiseaseCodes(eq("腰腿发麻，怀疑是腰椎问题"), any(), anyList(), anyList()))
                 .thenReturn(List.of("lumbar_disc_herniation"));
 
         PopulationProfile profile = new PopulationProfile("male", 42, AgeGroup.ADULT, List.of());
-        List<DiseaseCandidate> candidates = service.identifyCandidates("腰腿发麻，怀疑腰椎问题", profile);
+        List<DiseaseCandidate> candidates = service.identifyCandidates("腰腿发麻，怀疑是腰椎问题", profile);
 
         assertThat(candidates).hasSize(1);
         assertThat(candidates.getFirst().diseaseCode()).isEqualTo("lumbar_disc_herniation");

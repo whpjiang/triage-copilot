@@ -15,7 +15,8 @@ public class PathwayTagService {
         String text = symptoms == null ? "" : symptoms.toLowerCase(Locale.ROOT);
         List<String> tags = new ArrayList<>();
 
-        if (profile.ageGroup() == AgeGroup.CHILD && containsAny(text, "发热", "发烧", "fever")) {
+        if ((profile.ageGroup() == AgeGroup.CHILD || profile.ageGroup() == AgeGroup.ADOLESCENT)
+                && containsAny(text, "发热", "发烧", "fever")) {
             tags.add("child_fever_pathway");
         }
         if (profile.ageGroup() == AgeGroup.ELDERLY && hasMultiple(text, "记忆", "头晕", "乏力", "失眠", "步态", "反应慢")) {

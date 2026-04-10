@@ -143,6 +143,47 @@ public class BaseDataAdminRepository {
         return extractGeneratedId(keyHolder);
     }
 
+    public boolean capabilityExists(String capabilityCode) {
+        Integer count = jdbcTemplate.queryForObject(
+                "select count(1) from medical_capability_catalog where capability_code = ? and active_status = 1",
+                Integer.class,
+                capabilityCode
+        );
+        return count != null && count > 0;
+    }
+
+    public void upsertDepartmentCapabilityRelation(long departmentId,
+                                                   String capabilityCode,
+                                                   String supportLevel,
+                                                   double weight,
+                                                   String source) {
+        Integer count = jdbcTemplate.queryForObject(
+                "select count(1) from department_capability_rel where department_id = ? and capability_code = ?",
+                Integer.class,
+                departmentId,
+                capabilityCode
+        );
+        if (count != null && count > 0) {
+            jdbcTemplate.update(
+                    "update department_capability_rel set support_level = ?, weight = ?, source = ? where department_id = ? and capability_code = ?",
+                    supportLevel,
+                    weight,
+                    source,
+                    departmentId,
+                    capabilityCode
+            );
+            return;
+        }
+        jdbcTemplate.update(
+                "insert into department_capability_rel(department_id, capability_code, support_level, weight, source) values (?, ?, ?, ?, ?)",
+                departmentId,
+                capabilityCode,
+                supportLevel,
+                weight,
+                source
+        );
+    }
+
     public Map<String, Integer> aggregateCounts() {
         Integer diseases = jdbcTemplate.queryForObject("select count(1) from disease_master where deleted = 0", Integer.class);
         Integer pending = jdbcTemplate.queryForObject("select count(1) from import_review_item where resolved = 0", Integer.class);

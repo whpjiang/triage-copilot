@@ -2,87 +2,134 @@
 
 ## 主链路
 
-当前 `POST /api/triage/assess` 采用以下顺序执行：
+`POST /api/triage/assess` 当前按以下顺序执行：
 
-1. 用户输入症状、年龄、性别
-2. `PopulationProfileService` 归一化用户画像
-3. `PathwayTagService` 推断场景路径标签
-4. `DiseaseCandidateService` 基于疾病名、别名、症状关键词做首轮疾病候选识别
-5. `AiDiseaseRecallClient` 在规则候选之后做受白名单约束的补充召回
-6. `DiseaseNormalizeService` 对性别、年龄、关键词等规则做归一化处理
-7. `MedicalCapabilityService` 将疾病候选映射为标准医学能力并结合路径标签排序
-8. 再次按人群约束过滤医学能力
-9. `LocalDepartmentMappingService` 将医学能力映射到本地医院真实科室
-10. `DoctorRecommendationService` 在本地科室基础上推荐医生候选
-11. `TriageExplanationService` 生成结构化解释文本
+1. `PopulationProfileService`
+   标准化性别、年龄和年龄段，并生成 `crowdTags`
+2. `PathwayTagService`
+   根据症状和人群识别路径标签
+3. `DiseaseCandidateService`
+   先用规则识别疾病候选，再尝试 AI 补召回
+4. `MedicalCapabilityService`
+   将疾病候选映射到标准医学能力，并按人群约束过滤
+5. `LocalDepartmentMappingService`
+   将标准医学能力映射到本地真实科室
+6. `DoctorRecommendationService`
+   在已命中的本地科室基础上推荐医生扩展位
+7. `TriageExplanationService`
+   生成结果解释
 
-## AI 边界
+## 年龄与人群约束
 
-当前版本中：
+当前统一规则：
 
-- 最终年龄、性别、人群约束由结构化规则控制
-- 疾病到能力、能力到本地科室、科室到医生由数据库关系控制
-- 路径标签由本地规则推断
-- AI 只承担两类职责
-  - 对结构化结果做解释润色
-  - 在疾病候选阶段做受白名单约束的补充召回
+- `child`: 0-11
+- `adolescent`: 12-17
+- `adult`: 18-64
+- `elderly`: 65+
 
-这意味着 AI 不会直接决定：
+约束会应用在：
 
-- 最终疾病编码
+- 疾病候选过滤
+- 医学能力过滤
+- 本地科室过滤
+- 医生过滤
+
+## AI 的边界
+
+AI 只负责：
+
+- 症状理解后的补充召回
+- 结果解释
+
+AI 不负责：
+
+- 最终疾病编码确定
+- 性别和年龄强过滤
 - 医学能力最终排序
 - 本地科室最终落点
-- 医生最终推荐落点
+- 高风险场景唯一决策
 
-## 输出结构
+## AI 补召回保护
 
-接口返回以下层次信息：
+### 白名单保护
 
-- `populationProfile`
-- `pathwayTags`
-- `candidateDiseases`
-- `capabilityRecommendations`
-- `departmentRecommendations`
-- `doctorRecommendations`
-- `explanation`
+AI 只能从“已入库且已通过性别/年龄过滤”的疾病集合中补充 disease code。
 
-这样调用方可以清楚看到：
+### 高风险保护
 
-- 候选疾病是什么
-- 为什么会召回这些医学能力
-- 哪些路径标签参与了排序
-- 最终落到哪个本地真实科室
-- 对应有哪些本地医生候选可作为扩展位返回
+遇到以下高风险症状时，直接跳过 AI 补召回：
 
-## 复杂场景承载方式
+- 胸痛
+- 呼吸困难
+- 昏迷
+- 意识不清
+- 抽搐
+- 大出血
+- 偏瘫
+- 言语不清
 
-### 儿童发热 / 咳嗽
+### 审计日志
 
-- 通过症状关键词或 AI 补召回命中儿科相关疾病
-- 由年龄段和 `child_fever_pathway` 共同过滤
-- 可召回 `cap_pediatrics` 与 `cap_pediatric_fever_clinic`
-- 最终映射到 `儿科门诊` 或 `儿童发热门诊`
+每次 AI 补召回都会写入 `ai_recall_audit_log`，用于后续追踪：
+
+- 是否跳过
+- 为什么跳过
+- 规则候选有哪些
+- AI 最终补了什么
+
+## 导入到分诊的衔接
+
+### 基础数据导入
+
+导入链路会把疾病、医院和科室写入基础表，并尝试自动映射医学能力。
+
+### 自动映射
+
+当前首版规则会自动识别常见科室，例如：
+
+- 儿科
+- 老年病科
+- 妇科
+- 男科
+- 骨科
+- 脊柱外科
+- 脊柱疼痛门诊
+- 移植随访门诊
+
+### 待人工复核
+
+以下情况会生成 `import_review_item`：
+
+- 缺少症状关键词
+- 缺少标准医学能力线索
+- 本地科室完全无法自动映射
+- 自动映射了多个能力，需要人工确认
+
+## 典型场景
+
+### 儿童发热
+
+- 画像进入 `child`
+- 路径命中 `child_fever_pathway`
+- 召回 `cap_pediatrics` 和 `cap_pediatric_fever_clinic`
+- 最终落到 `儿科门诊` 或 `儿童发热门诊`
 
 ### 老年记忆下降
 
-- 疾病候选命中老年认知下降相关疾病
-- 可召回 `cap_geriatrics` 与 `cap_memory_clinic`
+- 画像进入 `elderly`
+- 路径命中 `elderly_multisymptom_pathway`
+- 召回 `cap_geriatrics` 和 `cap_memory_clinic`
 - 最终落到 `老年病科` 或 `记忆障碍门诊`
 
-### 男性排尿异常
+### 腰腿痛
 
-- 疾病候选命中前列腺相关疾病
-- 路径标签 `male_urinary_pathway` 提升专病能力
-- 最终可落到 `男科门诊` 或 `男性排尿异常门诊`
-
-### 腰腿痛 / 脊柱问题
-
-- 疾病候选命中 `lumbar_disc_herniation`
-- 优先召回 `cap_spine_surgery` 与 `cap_spine_pain_clinic`
+- 路径命中 `spine_pathway`
+- 优先召回 `cap_spine_surgery` 和 `cap_spine_pain_clinic`
 - 最终落到 `脊柱外科门诊` 或 `脊柱疼痛专病门诊`
 
 ### 移植术后复查
 
-- 通过路径标签 `transplant_followup`
-- 召回特殊路径能力 `cap_transplant_followup`
+- 路径命中 `transplant_followup`
+- 召回 `cap_transplant_followup`
 - 最终落到 `器官移植随访门诊`

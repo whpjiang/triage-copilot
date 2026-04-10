@@ -54,24 +54,24 @@ class BaseDataControllerIntegrationTest {
     }
 
     @Test
-    void shouldExposeTemplateAndPendingReviews() throws Exception {
+    void shouldExposeWuhanTemplateAndCreatePendingReviewForUnmappedDepartment() throws Exception {
         String csv = """
-                hospital_name,department_name,city,parent_department_name,department_intro,service_scope
-                demo_hospital,import_review_clinic,shanghai,internal,import_intro,import_scope
+                医院名称,科室名称,所属城市,父级科室,科室简介,诊疗范围
+                武汉样例医院,综合评估门诊,武汉,内科,需要人工识别的结构化导入,复杂慢病管理
                 """;
-        MockMultipartFile file = new MockMultipartFile("file", "department.csv", "text/csv", csv.getBytes());
+        MockMultipartFile file = new MockMultipartFile("file", "wuhan-department.csv", "text/csv", csv.getBytes());
 
         mockMvc.perform(multipart("/api/base-data/import")
                         .file(file)
-                        .param("datasetType", "department")
+                        .param("datasetType", "wuhan_department")
                         .contentType(MediaType.MULTIPART_FORM_DATA))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.reviewCount").value(1));
 
-        mockMvc.perform(get("/api/base-data/template").param("datasetType", "department"))
+        mockMvc.perform(get("/api/base-data/template").param("datasetType", "wuhan_department"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.datasetType").value("department"))
-                .andExpect(jsonPath("$.data.requiredFields[0]").value("hospital_name"))
+                .andExpect(jsonPath("$.data.datasetType").value("wuhan_department"))
+                .andExpect(jsonPath("$.data.requiredFields[0]").value("医院名称"))
                 .andExpect(jsonPath("$.data.csvTemplate").isString());
 
         mockMvc.perform(get("/api/base-data/reviews")
@@ -79,15 +79,35 @@ class BaseDataControllerIntegrationTest {
                         .param("limit", "5"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.pendingCount").isNumber())
-                .andExpect(jsonPath("$.data.items[0].datasetType").value("department"))
                 .andExpect(jsonPath("$.data.items[0].issueType").value("WAIT_CAPABILITY_MAPPING"));
+    }
+
+    @Test
+    void shouldAutoMapWuhanDepartmentImport() throws Exception {
+        String csv = """
+                医院名称,科室名称,所属城市,父级科室,科室简介,诊疗范围
+                武汉样例医院,妇科门诊,武汉,妇产科,女性专科门诊,女性下腹痛|盆腔炎
+                """;
+        MockMultipartFile file = new MockMultipartFile("file", "wuhan-auto-map.csv", "text/csv", csv.getBytes());
+
+        mockMvc.perform(multipart("/api/base-data/import")
+                        .file(file)
+                        .param("datasetType", "wuhan_department")
+                        .contentType(MediaType.MULTIPART_FORM_DATA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.successCount").value(1))
+                .andExpect(jsonPath("$.data.reviewCount").value(0));
+
+        mockMvc.perform(get("/api/base-data/check"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.relationCount").isNumber());
     }
 
     @Test
     void shouldResolvePendingReviewItem() throws Exception {
         String csv = """
                 hospital_name,department_name,city,parent_department_name,department_intro,service_scope
-                demo_hospital,resolve_review_clinic,shanghai,internal,import_intro,import_scope
+                demo_hospital,resolve_review_clinic,example_city,internal,import_intro,import_scope
                 """;
         MockMultipartFile file = new MockMultipartFile("file", "department.csv", "text/csv", csv.getBytes());
 

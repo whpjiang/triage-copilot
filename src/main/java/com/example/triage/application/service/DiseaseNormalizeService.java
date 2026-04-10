@@ -48,7 +48,7 @@ public class DiseaseNormalizeService {
             }
         } catch (Exception ignored) {
         }
-        return Arrays.stream(trimmed.split("[,，;；|/]"))
+        return Arrays.stream(trimmed.split("[,，|/；;\\s]+"))
                 .map(this::normalizeText)
                 .filter(StringUtils::hasText)
                 .distinct()
@@ -69,7 +69,7 @@ public class DiseaseNormalizeService {
         }
         List<String> values = new ArrayList<>();
         String normalized = normalizeText(text);
-        for (String token : normalized.split("[,，;；|/\\s]+")) {
+        for (String token : normalized.split("[,，|/；;\\s]+")) {
             if (token.length() > 1) {
                 values.add(token);
             }

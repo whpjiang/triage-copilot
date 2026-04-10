@@ -34,6 +34,7 @@ public class BaseDataCheckService {
         response.setDepartmentCount(hospitalDataRepository.countDepartments());
         response.setRelationCount(hospitalDataRepository.countDepartmentCapabilityRelations());
         response.setPendingReviewCount(counts.getOrDefault("pending", 0));
+
         List<String> warnings = new ArrayList<>();
         if (response.getDiseaseCount() == 0) {
             warnings.add("疾病主数据为空");
