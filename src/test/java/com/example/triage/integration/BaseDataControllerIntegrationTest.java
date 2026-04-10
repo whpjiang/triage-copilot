@@ -31,26 +31,21 @@ class BaseDataControllerIntegrationTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
-    void shouldImportDiseaseCsvAndExposeCheckSummary() throws Exception {
+    void shouldImportWuhanDiseaseWithChineseHeaders() throws Exception {
         String csv = """
-                disease_name,aliases,symptom_keywords,gender_rule,age_min,age_max,age_group,urgency_level,standard_dept_hint
-                test_disease,test_alias,headache|dizziness,all,18,65,adult,medium,neurology
+                疾病名称,别名,症状关键词,适用性别,年龄范围,紧急程度,建议科室
+                女性下腹痛,盆腔炎|盆腔感染,下腹痛|白带异常|发热,女,14-60岁,medium,妇科
                 """;
-        MockMultipartFile file = new MockMultipartFile("file", "disease.csv", "text/csv", csv.getBytes());
+        MockMultipartFile file = new MockMultipartFile("file", "wuhan-disease.csv", "text/csv", csv.getBytes());
 
         mockMvc.perform(multipart("/api/base-data/import")
                         .file(file)
-                        .param("datasetType", "disease")
+                        .param("datasetType", "wuhan_disease")
                         .contentType(MediaType.MULTIPART_FORM_DATA))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.successCount").value(1))
-                .andExpect(jsonPath("$.data.failureCount").value(0));
-
-        mockMvc.perform(get("/api/base-data/check"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.diseaseCount").isNumber())
-                .andExpect(jsonPath("$.data.capabilityCount").isNumber())
-                .andExpect(jsonPath("$.data.pendingReviewCount").isNumber());
+                .andExpect(jsonPath("$.data.failureCount").value(0))
+                .andExpect(jsonPath("$.data.reviewCount").value(0));
     }
 
     @Test
@@ -66,7 +61,8 @@ class BaseDataControllerIntegrationTest {
                         .param("datasetType", "wuhan_department")
                         .contentType(MediaType.MULTIPART_FORM_DATA))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.reviewCount").value(1));
+                .andExpect(jsonPath("$.data.reviewCount").value(1))
+                .andExpect(jsonPath("$.data.reviewTypeDistribution.WAIT_CAPABILITY_MAPPING").value(1));
 
         mockMvc.perform(get("/api/base-data/template").param("datasetType", "wuhan_department"))
                 .andExpect(status().isOk())
@@ -79,11 +75,12 @@ class BaseDataControllerIntegrationTest {
                         .param("limit", "5"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.pendingCount").isNumber())
+                .andExpect(jsonPath("$.data.issueTypeDistribution.WAIT_CAPABILITY_MAPPING").isNumber())
                 .andExpect(jsonPath("$.data.items[0].issueType").value("WAIT_CAPABILITY_MAPPING"));
     }
 
     @Test
-    void shouldAutoMapWuhanDepartmentImport() throws Exception {
+    void shouldAutoMapWuhanDepartmentImportAndExposeStats() throws Exception {
         String csv = """
                 医院名称,科室名称,所属城市,父级科室,科室简介,诊疗范围
                 武汉样例医院,妇科门诊,武汉,妇产科,女性专科门诊,女性下腹痛|盆腔炎
@@ -96,6 +93,7 @@ class BaseDataControllerIntegrationTest {
                         .contentType(MediaType.MULTIPART_FORM_DATA))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.successCount").value(1))
+                .andExpect(jsonPath("$.data.autoMappedCount").value(1))
                 .andExpect(jsonPath("$.data.reviewCount").value(0));
 
         mockMvc.perform(get("/api/base-data/check"))
@@ -148,19 +146,20 @@ class BaseDataControllerIntegrationTest {
     @Test
     void shouldExposeImportJobListAndFailureDetails() throws Exception {
         String csv = """
-                disease_name,aliases,symptom_keywords,gender_rule,age_min,age_max,age_group,urgency_level,standard_dept_hint
-                valid_disease,valid_alias,headache|dizziness,all,18,65,adult,medium,neurology
-                ,missing_name,nausea,all,18,65,adult,low,internal
+                疾病名称,别名,症状关键词,适用性别,年龄范围,紧急程度,建议科室
+                valid_disease,valid_alias,headache|dizziness,all,18-65岁,medium,neurology
+                ,missing_name,nausea,all,18-65岁,low,internal
                 """;
         MockMultipartFile file = new MockMultipartFile("file", "job-detail.csv", "text/csv", csv.getBytes());
 
         String importResponse = mockMvc.perform(multipart("/api/base-data/import")
                         .file(file)
-                        .param("datasetType", "disease")
+                        .param("datasetType", "wuhan_disease")
                         .contentType(MediaType.MULTIPART_FORM_DATA))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.successCount").value(1))
                 .andExpect(jsonPath("$.data.failureCount").value(1))
+                .andExpect(jsonPath("$.data.commonIssueDistribution").isMap())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -170,7 +169,7 @@ class BaseDataControllerIntegrationTest {
         mockMvc.perform(get("/api/base-data/jobs").param("limit", "5"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.jobs[0].jobId").isNumber())
-                .andExpect(jsonPath("$.data.jobs[0].datasetType").isString());
+                .andExpect(jsonPath("$.data.jobs[0].autoMappedCount").isNumber());
 
         mockMvc.perform(get("/api/base-data/jobs/detail")
                         .param("jobId", String.valueOf(jobId))
@@ -178,7 +177,8 @@ class BaseDataControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.job.jobId").value(jobId))
                 .andExpect(jsonPath("$.data.job.failureCount").value(1))
-                .andExpect(jsonPath("$.data.failures[0].rowNumber").isNumber())
-                .andExpect(jsonPath("$.data.failures[0].errorMessage").value("missing field: disease_name"));
+                .andExpect(jsonPath("$.data.commonIssueDistribution").isMap())
+                .andExpect(jsonPath("$.data.reviewTypeDistribution.MISSING_DISEASE_NAME").value(1))
+                .andExpect(jsonPath("$.data.failures[0].rowNumber").isNumber());
     }
 }

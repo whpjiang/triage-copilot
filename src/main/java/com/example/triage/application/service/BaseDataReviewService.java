@@ -16,6 +16,7 @@ public class BaseDataReviewService {
     public BaseDataReviewResponse listPendingReviews(String datasetType, Long jobId, int limit) {
         BaseDataReviewResponse response = new BaseDataReviewResponse();
         response.setPendingCount(baseDataAdminRepository.countPendingReviews(datasetType, jobId));
+        response.setIssueTypeDistribution(baseDataAdminRepository.countReviewTypes(jobId, datasetType));
         response.setItems(baseDataAdminRepository.findPendingReviews(datasetType, jobId, limit).stream().map(item -> {
             BaseDataReviewResponse.ReviewItemDto dto = new BaseDataReviewResponse.ReviewItemDto();
             dto.setId(item.id());

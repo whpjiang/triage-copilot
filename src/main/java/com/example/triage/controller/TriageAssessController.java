@@ -3,7 +3,7 @@ package com.example.triage.controller;
 import com.example.triage.application.dto.TriageAssessRequest;
 import com.example.triage.application.dto.TriageAssessResponse;
 import com.example.triage.application.orchestrator.TriageDecisionOrchestrator;
-import com.example.triagecopilot.common.ApiResponse;
+import com.example.triage.common.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;

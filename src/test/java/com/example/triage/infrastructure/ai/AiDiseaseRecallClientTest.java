@@ -47,10 +47,32 @@ class AiDiseaseRecallClientTest {
                 "approved"
         ));
 
-        List<String> result = client.suggestDiseaseCodes("胸痛伴呼吸困难", profile, eligibleDiseases, List.of());
+        List<String> result = client.suggestDiseaseCodes("剧烈胸痛伴呼吸急促", profile, eligibleDiseases, List.of());
 
         assertThat(result).isEmpty();
-        verify(auditRepository).save(eq("胸痛伴呼吸困难"), eq("male"), eq(45), eq("adult"), eq(1), any(), any(), eq("SKIPPED_HIGH_RISK"), any());
+        verify(auditRepository).save(eq("剧烈胸痛伴呼吸急促"), eq("male"), eq(45), eq("adult"), eq(1), any(), any(), eq("SKIPPED_HIGH_RISK"), any());
+    }
+
+    @Test
+    void shouldSkipPregnancyHighRiskSymptoms() {
+        PopulationProfile profile = new PopulationProfile("female", 30, AgeGroup.ADULT, List.of("adult", "pregnancy"));
+        List<DiseaseRecord> eligibleDiseases = List.of(new DiseaseRecord(
+                "pelvic_inflammatory_disease",
+                "盆腔炎",
+                "[]",
+                "[\"腹痛\"]",
+                "female_only",
+                14,
+                60,
+                "adult",
+                "medium",
+                "approved"
+        ));
+
+        List<String> result = client.suggestDiseaseCodes("孕妇腹痛伴阴道流血", profile, eligibleDiseases, List.of());
+
+        assertThat(result).isEmpty();
+        verify(auditRepository).save(eq("孕妇腹痛伴阴道流血"), eq("female"), eq(30), eq("adult"), eq(1), any(), any(), eq("SKIPPED_HIGH_RISK"), any());
     }
 
     @Test

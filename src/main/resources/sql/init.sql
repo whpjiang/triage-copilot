@@ -99,6 +99,7 @@ CREATE TABLE IF NOT EXISTS import_job_record (
     success_count INT DEFAULT 0,
     failure_count INT DEFAULT 0,
     review_count INT DEFAULT 0,
+    auto_mapped_count INT DEFAULT 0,
     message VARCHAR(500),
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP

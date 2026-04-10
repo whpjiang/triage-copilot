@@ -1,12 +1,16 @@
 package com.example.triage.application.dto;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class BaseDataJobDetailResponse {
 
     private JobDto job;
     private Integer pendingReviewCount;
+    private Map<String, Integer> reviewTypeDistribution = new LinkedHashMap<>();
+    private Map<String, Integer> commonIssueDistribution = new LinkedHashMap<>();
     private List<FailureLogDto> failures = new ArrayList<>();
 
     public JobDto getJob() {
@@ -25,6 +29,22 @@ public class BaseDataJobDetailResponse {
         this.pendingReviewCount = pendingReviewCount;
     }
 
+    public Map<String, Integer> getReviewTypeDistribution() {
+        return reviewTypeDistribution;
+    }
+
+    public void setReviewTypeDistribution(Map<String, Integer> reviewTypeDistribution) {
+        this.reviewTypeDistribution = reviewTypeDistribution;
+    }
+
+    public Map<String, Integer> getCommonIssueDistribution() {
+        return commonIssueDistribution;
+    }
+
+    public void setCommonIssueDistribution(Map<String, Integer> commonIssueDistribution) {
+        this.commonIssueDistribution = commonIssueDistribution;
+    }
+
     public List<FailureLogDto> getFailures() {
         return failures;
     }
@@ -41,6 +61,7 @@ public class BaseDataJobDetailResponse {
         private Integer successCount;
         private Integer failureCount;
         private Integer reviewCount;
+        private Integer autoMappedCount;
         private String message;
 
         public Long getJobId() {
@@ -97,6 +118,14 @@ public class BaseDataJobDetailResponse {
 
         public void setReviewCount(Integer reviewCount) {
             this.reviewCount = reviewCount;
+        }
+
+        public Integer getAutoMappedCount() {
+            return autoMappedCount;
+        }
+
+        public void setAutoMappedCount(Integer autoMappedCount) {
+            this.autoMappedCount = autoMappedCount;
         }
 
         public String getMessage() {

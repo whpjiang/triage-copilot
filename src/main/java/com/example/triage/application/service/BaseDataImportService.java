@@ -8,6 +8,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -20,17 +21,20 @@ public class BaseDataImportService {
     private final DiseaseNormalizeService diseaseNormalizeService;
     private final DepartmentCapabilityAutoMappingService departmentCapabilityAutoMappingService;
     private final WuhanImportAdapterService wuhanImportAdapterService;
+    private final DiseaseCapabilityHintService diseaseCapabilityHintService;
 
     public BaseDataImportService(TabularDataReader tabularDataReader,
                                  BaseDataAdminRepository baseDataAdminRepository,
                                  DiseaseNormalizeService diseaseNormalizeService,
                                  DepartmentCapabilityAutoMappingService departmentCapabilityAutoMappingService,
-                                 WuhanImportAdapterService wuhanImportAdapterService) {
+                                 WuhanImportAdapterService wuhanImportAdapterService,
+                                 DiseaseCapabilityHintService diseaseCapabilityHintService) {
         this.tabularDataReader = tabularDataReader;
         this.baseDataAdminRepository = baseDataAdminRepository;
         this.diseaseNormalizeService = diseaseNormalizeService;
         this.departmentCapabilityAutoMappingService = departmentCapabilityAutoMappingService;
         this.wuhanImportAdapterService = wuhanImportAdapterService;
+        this.diseaseCapabilityHintService = diseaseCapabilityHintService;
     }
 
     public BaseDataImportResponse importData(String datasetType, MultipartFile file) throws Exception {
@@ -39,6 +43,7 @@ public class BaseDataImportService {
         int success = 0;
         int failure = 0;
         int review = 0;
+        int autoMapped = 0;
         List<String> messages = new ArrayList<>();
         try {
             List<Map<String, String>> rows = tabularDataReader.read(file);
@@ -47,22 +52,23 @@ public class BaseDataImportService {
                 rowNumber++;
                 try {
                     Map<String, String> row = wuhanImportAdapterService.adapt(normalizedType, sourceRow);
-                    if (isDiseaseDataset(normalizedType)) {
-                        review += importDiseaseRow(jobId, row);
-                    } else {
-                        review += importDepartmentRow(jobId, row, normalizedType);
-                    }
+                    RowImportResult result = isDiseaseDataset(normalizedType)
+                            ? importDiseaseRow(jobId, rowNumber, row)
+                            : importDepartmentRow(jobId, rowNumber, row, normalizedType);
                     success++;
+                    review += result.reviewCount();
+                    autoMapped += result.autoMappedCount();
                 } catch (Exception ex) {
                     failure++;
                     baseDataAdminRepository.addFailure(jobId, rowNumber, sourceRow.toString(), ex.getMessage());
+                    review += createFailureReview(jobId, normalizedType, rowNumber, sourceRow, ex.getMessage());
                 }
             }
-            String summary = "Imported " + success + " rows, failures " + failure + ", reviews " + review;
-            baseDataAdminRepository.finishImportJob(jobId, success, failure, review, "DONE", summary);
+            String summary = "Imported " + success + " rows, failures " + failure + ", auto-mapped " + autoMapped + ", reviews " + review;
+            baseDataAdminRepository.finishImportJob(jobId, success, failure, review, autoMapped, "DONE", summary);
             messages.add(summary);
         } catch (Exception ex) {
-            baseDataAdminRepository.finishImportJob(jobId, success, failure, review, "FAILED", ex.getMessage());
+            baseDataAdminRepository.finishImportJob(jobId, success, failure, review, autoMapped, "FAILED", ex.getMessage());
             throw ex;
         }
         BaseDataImportResponse response = new BaseDataImportResponse();
@@ -71,72 +77,98 @@ public class BaseDataImportService {
         response.setSuccessCount(success);
         response.setFailureCount(failure);
         response.setReviewCount(review);
+        response.setAutoMappedCount(autoMapped);
+        response.setReviewTypeDistribution(baseDataAdminRepository.countReviewTypes(jobId));
+        response.setCommonIssueDistribution(baseDataAdminRepository.countFailureTypes(jobId));
         response.setMessages(messages);
         return response;
     }
 
-    private int importDiseaseRow(long jobId, Map<String, String> row) {
-        String diseaseName = require(row, "disease_name");
+    private RowImportResult importDiseaseRow(long jobId, int rowNumber, Map<String, String> row) {
+        String diseaseName = cleanText(row.get("disease_name"));
+        if (!StringUtils.hasText(diseaseName)) {
+            throw new IllegalArgumentException("missing field: disease_name");
+        }
         String diseaseCode = buildCode(firstNonBlank(row.get("disease_code"), diseaseName));
         List<String> aliases = diseaseNormalizeService.parseList(firstNonBlank(row.get("aliases"), row.get("aliases_json")));
         List<String> symptoms = diseaseNormalizeService.normalizeKeywords(firstNonBlank(row.get("symptom_keywords"), row.get("symptoms")));
-        String genderRule = diseaseNormalizeService.normalizeGenderRule(row.get("gender_rule"));
-        Integer ageMin = parseInteger(row.get("age_min"));
-        Integer ageMax = parseInteger(row.get("age_max"));
-        String ageGroup = firstNonBlank(row.get("age_group"), inferAgeGroup(ageMin, ageMax));
+        NormalizedGenderRule genderRule = normalizeGenderRule(row);
+        AgeBoundary ageBoundary = resolveAgeBoundary(row);
+        String ageGroup = firstNonBlank(row.get("age_group"), inferAgeGroup(ageBoundary.ageMin(), ageBoundary.ageMax()));
         String urgencyLevel = firstNonBlank(row.get("urgency_level"), "medium");
+
         baseDataAdminRepository.upsertDisease(
                 diseaseCode,
-                diseaseName,
+                diseaseName.trim(),
                 diseaseNormalizeService.toJsonArray(aliases),
                 diseaseNormalizeService.toJsonArray(symptoms),
-                genderRule,
-                ageMin,
-                ageMax,
+                genderRule.genderRule(),
+                ageBoundary.ageMin(),
+                ageBoundary.ageMax(),
                 ageGroup,
                 urgencyLevel,
                 "approved"
         );
         baseDataAdminRepository.replaceDiseaseAliases(diseaseCode, aliases);
+
         int review = 0;
         if (symptoms.isEmpty()) {
-            review++;
-            baseDataAdminRepository.addReviewItem(jobId, "disease", diseaseCode, "MISSING_SYMPTOM_KEYWORDS", row.toString(), "请补充症状关键词");
+            review += addReview(jobId, "disease", diseaseCode, "MISSING_SYMPTOM_KEYWORDS", row, "请补充症状关键词");
         }
-        if (!StringUtils.hasText(row.get("standard_dept_hint"))) {
-            review++;
-            baseDataAdminRepository.addReviewItem(jobId, "disease", diseaseCode, "MISSING_STANDARD_DEPT_HINT", row.toString(), "请补充疾病到医学能力的映射线索");
+        if (!genderRule.recognized()) {
+            review += addReview(jobId, "disease", diseaseCode, "UNRECOGNIZED_GENDER_RULE", row, "请人工确认性别规则");
         }
-        return review;
+        if (!ageBoundary.recognized()) {
+            review += addReview(jobId, "disease", diseaseCode, "UNRECOGNIZED_AGE_RANGE", row, "请人工确认年龄范围");
+        }
+
+        DiseaseCapabilityHintService.HintMappingResult hintMapping = diseaseCapabilityHintService.map(row.get("standard_dept_hint"));
+        if (hintMapping.mapped()) {
+            for (String capabilityCode : hintMapping.capabilityCodes()) {
+                baseDataAdminRepository.upsertDiseaseCapabilityRelation(
+                        diseaseCode,
+                        capabilityCode,
+                        "PRIMARY",
+                        1.00D,
+                        "imported from standard_dept_hint row " + rowNumber
+                );
+            }
+        } else {
+            String issueType = hintMapping.reviewIssueType() == null ? "MISSING_STANDARD_DEPT_HINT" : hintMapping.reviewIssueType();
+            review += addReview(jobId, "disease", diseaseCode, issueType, row, reviewSuggestionForHint(issueType));
+        }
+        return new RowImportResult(review, 0);
     }
 
-    private int importDepartmentRow(long jobId, Map<String, String> row, String datasetType) {
+    private RowImportResult importDepartmentRow(long jobId, int rowNumber, Map<String, String> row, String datasetType) {
         String hospitalName = require(row, "hospital_name");
         String departmentName = require(row, "department_name");
-        String city = firstNonBlank(row.get("city"), "本地");
-        long hospitalId = baseDataAdminRepository.upsertHospital(buildCode(hospitalName), hospitalName, city);
+        String city = firstNonBlank(row.get("city"), "武汉");
+        AgeBoundary ageBoundary = resolveAgeBoundary(row);
+
+        long hospitalId = baseDataAdminRepository.upsertHospital(buildCode(hospitalName), cleanText(hospitalName), city);
         long departmentId = baseDataAdminRepository.upsertDepartment(
                 hospitalId,
-                departmentName,
-                row.get("parent_department_name"),
-                row.get("department_intro"),
-                row.get("service_scope"),
+                cleanText(departmentName),
+                cleanText(row.get("parent_department_name")),
+                cleanText(row.get("department_intro")),
+                cleanText(row.get("service_scope")),
                 diseaseNormalizeService.normalizeGenderRule(row.get("gender_rule")),
-                parseInteger(row.get("age_min")),
-                parseInteger(row.get("age_max")),
-                diseaseNormalizeService.toJsonArray(diseaseNormalizeService.parseList(row.get("crowd_tags")))
+                ageBoundary.ageMin(),
+                ageBoundary.ageMax(),
+                diseaseNormalizeService.toJsonArray(diseaseNormalizeService.parseList(firstNonBlank(row.get("crowd_tags"), row.get("age_group"))))
         );
 
-        int review = 0;
-        List<DepartmentCapabilityAutoMappingService.CapabilityMappingSuggestion> suggestions =
-                departmentCapabilityAutoMappingService.suggest(
+        DepartmentCapabilityAutoMappingService.MappingEvaluation evaluation =
+                departmentCapabilityAutoMappingService.evaluate(
                         departmentName,
                         row.get("parent_department_name"),
                         row.get("service_scope"),
                         row.get("department_intro")
                 );
-        int mappedCount = 0;
-        for (DepartmentCapabilityAutoMappingService.CapabilityMappingSuggestion suggestion : suggestions) {
+
+        int autoMapped = 0;
+        for (DepartmentCapabilityAutoMappingService.CapabilityMappingSuggestion suggestion : evaluation.suggestions()) {
             if (!baseDataAdminRepository.capabilityExists(suggestion.capabilityCode())) {
                 continue;
             }
@@ -147,16 +179,102 @@ public class BaseDataImportService {
                     suggestion.weight(),
                     datasetType.startsWith("wuhan_") ? "wuhan-auto-rule" : "import-auto-rule"
             );
-            mappedCount++;
+            autoMapped++;
         }
-        if (mappedCount == 0) {
-            review++;
-            baseDataAdminRepository.addReviewItem(jobId, "department", String.valueOf(departmentId), "WAIT_CAPABILITY_MAPPING", row.toString(), "请为本地科室补充医学能力映射");
-        } else if (mappedCount > 1) {
-            review++;
-            baseDataAdminRepository.addReviewItem(jobId, "department", String.valueOf(departmentId), "AUTO_MAPPING_NEEDS_REVIEW", row.toString(), "自动映射了多个医学能力，请人工复核");
+
+        int review = 0;
+        for (String issueType : evaluation.reviewIssues()) {
+            review += addReview(jobId, "department", String.valueOf(departmentId), issueType, row, evaluation.reviewSuggestion());
         }
-        return review;
+        if (!ageBoundary.recognized() && StringUtils.hasText(firstNonBlank(row.get("age_range"), row.get("crowd_tags")))) {
+            review += addReview(jobId, "department", String.valueOf(departmentId), "UNRECOGNIZED_AGE_RANGE", row, "请人工确认科室适用年龄范围");
+        }
+        return new RowImportResult(review, autoMapped);
+    }
+
+    private int createFailureReview(long jobId,
+                                    String datasetType,
+                                    int rowNumber,
+                                    Map<String, String> row,
+                                    String errorMessage) {
+        String issueType = "IMPORT_FAILURE";
+        if (errorMessage != null && errorMessage.contains("disease_name")) {
+            issueType = "MISSING_DISEASE_NAME";
+        } else if (errorMessage != null && errorMessage.contains("hospital_name")) {
+            issueType = "MISSING_HOSPITAL_NAME";
+        } else if (errorMessage != null && errorMessage.contains("department_name")) {
+            issueType = "MISSING_DEPARTMENT_NAME";
+        }
+        baseDataAdminRepository.addReviewItem(jobId, datasetKey(datasetType), "row-" + rowNumber, issueType, row.toString(), "该行导入失败，请人工修正后重试");
+        return 1;
+    }
+
+    private int addReview(long jobId, String datasetType, String itemKey, String issueType, Map<String, String> row, String suggestion) {
+        baseDataAdminRepository.addReviewItem(jobId, datasetType, itemKey, issueType, row.toString(), suggestion);
+        return 1;
+    }
+
+    private String datasetKey(String normalizedType) {
+        return isDiseaseDataset(normalizedType) ? "disease" : "department";
+    }
+
+    private NormalizedGenderRule normalizeGenderRule(Map<String, String> row) {
+        String source = firstNonBlank(row.get("gender_rule"), row.get("crowd_tags"));
+        if (!StringUtils.hasText(source)) {
+            return new NormalizedGenderRule("all", true);
+        }
+        String normalized = diseaseNormalizeService.normalizeText(source);
+        if (containsAny(normalized, "女", "female", "妇")) {
+            return new NormalizedGenderRule("female_only", true);
+        }
+        if (containsAny(normalized, "男", "male", "前列腺", "andrology")) {
+            return new NormalizedGenderRule("male_only", true);
+        }
+        if (containsAny(normalized, "all", "不限", "通用", "unknown")) {
+            return new NormalizedGenderRule("all", true);
+        }
+        return new NormalizedGenderRule("all", false);
+    }
+
+    private AgeBoundary resolveAgeBoundary(Map<String, String> row) {
+        Integer ageMin = parseInteger(row.get("age_min"));
+        Integer ageMax = parseInteger(row.get("age_max"));
+        if (ageMin != null || ageMax != null) {
+            return new AgeBoundary(ageMin, ageMax, true);
+        }
+        String range = firstNonBlank(row.get("age_range"), row.get("age_group"), row.get("crowd_tags"));
+        if (!StringUtils.hasText(range)) {
+            return new AgeBoundary(null, null, true);
+        }
+        String normalized = diseaseNormalizeService.normalizeText(range);
+        if (containsAny(normalized, "儿童", "儿科", "child")) {
+            return new AgeBoundary(0, 11, true);
+        }
+        if (containsAny(normalized, "青少年", "adolescent")) {
+            return new AgeBoundary(12, 17, true);
+        }
+        if (containsAny(normalized, "成人", "adult")) {
+            return new AgeBoundary(18, 64, true);
+        }
+        if (containsAny(normalized, "老年", "elderly")) {
+            return new AgeBoundary(65, 120, true);
+        }
+        String digits = normalized.replaceAll("[^0-9\\-~岁至]", " ").trim();
+        if (digits.matches(".*\\d+.*\\d+.*")) {
+            List<Integer> values = new ArrayList<>();
+            for (String part : digits.split("[^0-9]+")) {
+                if (StringUtils.hasText(part)) {
+                    values.add(Integer.parseInt(part));
+                }
+            }
+            if (values.size() >= 2) {
+                return new AgeBoundary(values.get(0), values.get(1), true);
+            }
+            if (values.size() == 1) {
+                return new AgeBoundary(values.get(0), null, false);
+            }
+        }
+        return new AgeBoundary(null, null, false);
     }
 
     private boolean isDiseaseDataset(String datasetType) {
@@ -185,18 +303,27 @@ public class BaseDataImportService {
         return value.trim();
     }
 
-    private String firstNonBlank(String first, String second) {
-        return StringUtils.hasText(first) ? first.trim() : (StringUtils.hasText(second) ? second.trim() : "");
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (StringUtils.hasText(value)) {
+                return value.trim();
+            }
+        }
+        return "";
     }
 
     private Integer parseInteger(String value) {
         if (!StringUtils.hasText(value)) {
             return null;
         }
-        return Integer.parseInt(value.trim());
+        String digits = value.trim().replaceAll("[^0-9]", "");
+        return StringUtils.hasText(digits) ? Integer.parseInt(digits) : null;
     }
 
     private String inferAgeGroup(Integer ageMin, Integer ageMax) {
+        if (ageMin == null && ageMax == null) {
+            return "all";
+        }
         if (ageMax != null && ageMax <= 11) {
             return "child";
         }
@@ -212,10 +339,42 @@ public class BaseDataImportService {
         return "all";
     }
 
+    private String reviewSuggestionForHint(String issueType) {
+        if ("UNMAPPED_STANDARD_DEPT_HINT".equals(issueType)) {
+            return "标准科室线索未能映射到医学能力，请人工补充";
+        }
+        if ("AMBIGUOUS_STANDARD_DEPT_HINT".equals(issueType)) {
+            return "标准科室线索映射到了多个医学能力，请人工确认";
+        }
+        return "请补充疾病到医学能力的映射线索";
+    }
+
+    private boolean containsAny(String text, String... keywords) {
+        for (String keyword : keywords) {
+            if (text.contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String cleanText(String value) {
+        return value == null ? null : value.trim();
+    }
+
     private String buildCode(String text) {
         return text.toLowerCase(Locale.ROOT)
                 .replaceAll("[^a-z0-9\\u4e00-\\u9fa5]+", "_")
                 .replaceAll("_+", "_")
                 .replaceAll("^_|_$", "");
+    }
+
+    private record RowImportResult(int reviewCount, int autoMappedCount) {
+    }
+
+    private record AgeBoundary(Integer ageMin, Integer ageMax, boolean recognized) {
+    }
+
+    private record NormalizedGenderRule(String genderRule, boolean recognized) {
     }
 }

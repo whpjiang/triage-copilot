@@ -25,6 +25,7 @@ public class BaseDataJobService {
             dto.setSuccessCount(item.successCount());
             dto.setFailureCount(item.failureCount());
             dto.setReviewCount(item.reviewCount());
+            dto.setAutoMappedCount(item.autoMappedCount());
             dto.setMessage(item.message());
             return dto;
         }).toList());
@@ -45,9 +46,12 @@ public class BaseDataJobService {
         jobDto.setSuccessCount(job.successCount());
         jobDto.setFailureCount(job.failureCount());
         jobDto.setReviewCount(job.reviewCount());
+        jobDto.setAutoMappedCount(job.autoMappedCount());
         jobDto.setMessage(job.message());
         response.setJob(jobDto);
         response.setPendingReviewCount(baseDataAdminRepository.countPendingReviews(null, jobId));
+        response.setReviewTypeDistribution(baseDataAdminRepository.countReviewTypes(jobId));
+        response.setCommonIssueDistribution(baseDataAdminRepository.countFailureTypes(jobId));
         response.setFailures(baseDataAdminRepository.findFailuresByJobId(jobId, failureLimit).stream().map(item -> {
             BaseDataJobDetailResponse.FailureLogDto dto = new BaseDataJobDetailResponse.FailureLogDto();
             dto.setFailureId(item.failureId());

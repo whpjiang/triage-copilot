@@ -1,11 +1,14 @@
 package com.example.triage.application.dto;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class BaseDataReviewResponse {
 
     private Integer pendingCount;
+    private Map<String, Integer> issueTypeDistribution = new LinkedHashMap<>();
     private List<ReviewItemDto> items = new ArrayList<>();
 
     public Integer getPendingCount() {
@@ -14,6 +17,14 @@ public class BaseDataReviewResponse {
 
     public void setPendingCount(Integer pendingCount) {
         this.pendingCount = pendingCount;
+    }
+
+    public Map<String, Integer> getIssueTypeDistribution() {
+        return issueTypeDistribution;
+    }
+
+    public void setIssueTypeDistribution(Map<String, Integer> issueTypeDistribution) {
+        this.issueTypeDistribution = issueTypeDistribution;
     }
 
     public List<ReviewItemDto> getItems() {

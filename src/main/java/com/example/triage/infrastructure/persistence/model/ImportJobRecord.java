@@ -8,6 +8,7 @@ public record ImportJobRecord(
         Integer successCount,
         Integer failureCount,
         Integer reviewCount,
+        Integer autoMappedCount,
         String message
 ) {
 }

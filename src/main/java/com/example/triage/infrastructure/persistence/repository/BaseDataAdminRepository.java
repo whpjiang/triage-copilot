@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -27,7 +28,7 @@ public class BaseDataAdminRepository {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(
-                    "insert into import_job_record(dataset_type, file_name, status, success_count, failure_count, review_count) values (?, ?, ?, 0, 0, 0)",
+                    "insert into import_job_record(dataset_type, file_name, status, success_count, failure_count, review_count, auto_mapped_count) values (?, ?, ?, 0, 0, 0, 0)",
                     Statement.RETURN_GENERATED_KEYS
             );
             ps.setString(1, datasetType);
@@ -38,10 +39,16 @@ public class BaseDataAdminRepository {
         return extractGeneratedId(keyHolder);
     }
 
-    public void finishImportJob(long jobId, int successCount, int failureCount, int reviewCount, String status, String message) {
+    public void finishImportJob(long jobId,
+                                int successCount,
+                                int failureCount,
+                                int reviewCount,
+                                int autoMappedCount,
+                                String status,
+                                String message) {
         jdbcTemplate.update(
-                "update import_job_record set success_count = ?, failure_count = ?, review_count = ?, status = ?, message = ?, update_time = current_timestamp where id = ?",
-                successCount, failureCount, reviewCount, status, message, jobId
+                "update import_job_record set success_count = ?, failure_count = ?, review_count = ?, auto_mapped_count = ?, status = ?, message = ?, update_time = current_timestamp where id = ?",
+                successCount, failureCount, reviewCount, autoMappedCount, status, message, jobId
         );
     }
 
@@ -84,6 +91,30 @@ public class BaseDataAdminRepository {
                     diseaseCode, alias, "imported", "base-data-import"
             );
         }
+    }
+
+    public void upsertDiseaseCapabilityRelation(String diseaseCode,
+                                                String capabilityCode,
+                                                String relType,
+                                                double priorityScore,
+                                                String note) {
+        Integer count = jdbcTemplate.queryForObject(
+                "select count(1) from disease_capability_rel where disease_code = ? and capability_code = ?",
+                Integer.class,
+                diseaseCode,
+                capabilityCode
+        );
+        if (count != null && count > 0) {
+            jdbcTemplate.update(
+                    "update disease_capability_rel set rel_type = ?, priority_score = ?, note = ? where disease_code = ? and capability_code = ?",
+                    relType, priorityScore, note, diseaseCode, capabilityCode
+            );
+            return;
+        }
+        jdbcTemplate.update(
+                "insert into disease_capability_rel(disease_code, capability_code, rel_type, priority_score, note) values (?, ?, ?, ?, ?)",
+                diseaseCode, capabilityCode, relType, priorityScore, note
+        );
     }
 
     public long upsertHospital(String hospitalCode, String hospitalName, String city) {
@@ -166,21 +197,13 @@ public class BaseDataAdminRepository {
         if (count != null && count > 0) {
             jdbcTemplate.update(
                     "update department_capability_rel set support_level = ?, weight = ?, source = ? where department_id = ? and capability_code = ?",
-                    supportLevel,
-                    weight,
-                    source,
-                    departmentId,
-                    capabilityCode
+                    supportLevel, weight, source, departmentId, capabilityCode
             );
             return;
         }
         jdbcTemplate.update(
                 "insert into department_capability_rel(department_id, capability_code, support_level, weight, source) values (?, ?, ?, ?, ?)",
-                departmentId,
-                capabilityCode,
-                supportLevel,
-                weight,
-                source
+                departmentId, capabilityCode, supportLevel, weight, source
         );
     }
 
@@ -199,6 +222,51 @@ public class BaseDataAdminRepository {
         appendReviewFilters(sql, args, datasetType, jobId);
         Integer count = jdbcTemplate.queryForObject(sql.toString(), Integer.class, args.toArray());
         return count == null ? 0 : count;
+    }
+
+    public Map<String, Integer> countReviewTypes(Long jobId) {
+        return countReviewTypes(jobId, null);
+    }
+
+    public Map<String, Integer> countReviewTypes(Long jobId, String datasetType) {
+        StringBuilder sql = new StringBuilder("""
+                select issue_type, count(1) as total
+                from import_review_item
+                where resolved = 0
+                """);
+        List<Object> args = new ArrayList<>();
+        if (jobId != null) {
+            sql.append(" and job_id = ?");
+            args.add(jobId);
+        }
+        if (datasetType != null && !datasetType.isBlank()) {
+            sql.append(" and dataset_type = ?");
+            args.add(datasetType);
+        }
+        sql.append(" group by issue_type order by total desc, issue_type asc");
+        return jdbcTemplate.query(sql.toString(), rs -> {
+            Map<String, Integer> result = new LinkedHashMap<>();
+            while (rs.next()) {
+                result.put(rs.getString("issue_type"), rs.getInt("total"));
+            }
+            return result;
+        }, args.toArray());
+    }
+
+    public Map<String, Integer> countFailureTypes(Long jobId) {
+        return jdbcTemplate.query("""
+                select error_message, count(1) as total
+                from import_failure_log
+                where job_id = ?
+                group by error_message
+                order by total desc, error_message asc
+                """, rs -> {
+            Map<String, Integer> result = new LinkedHashMap<>();
+            while (rs.next()) {
+                result.put(rs.getString("error_message"), rs.getInt("total"));
+            }
+            return result;
+        }, jobId);
     }
 
     public List<ImportReviewItemRecord> findPendingReviews(String datasetType, Long jobId, int limit) {
@@ -226,14 +294,13 @@ public class BaseDataAdminRepository {
     public int resolveReviewItem(Long reviewId, String resolutionNote) {
         return jdbcTemplate.update(
                 "update import_review_item set resolved = 1, resolution_note = ?, update_time = current_timestamp where id = ? and resolved = 0",
-                resolutionNote,
-                reviewId
+                resolutionNote, reviewId
         );
     }
 
     public List<ImportJobRecord> findRecentJobs(int limit) {
         return jdbcTemplate.query("""
-                select id, dataset_type, file_name, status, success_count, failure_count, review_count, message
+                select id, dataset_type, file_name, status, success_count, failure_count, review_count, auto_mapped_count, message
                 from import_job_record
                 order by id desc
                 limit ?
@@ -245,13 +312,14 @@ public class BaseDataAdminRepository {
                 rs.getInt("success_count"),
                 rs.getInt("failure_count"),
                 rs.getInt("review_count"),
+                rs.getInt("auto_mapped_count"),
                 rs.getString("message")
         ), limit);
     }
 
     public ImportJobRecord findJobById(Long jobId) {
         List<ImportJobRecord> jobs = jdbcTemplate.query("""
-                select id, dataset_type, file_name, status, success_count, failure_count, review_count, message
+                select id, dataset_type, file_name, status, success_count, failure_count, review_count, auto_mapped_count, message
                 from import_job_record
                 where id = ?
                 """, (rs, rowNum) -> new ImportJobRecord(
@@ -262,6 +330,7 @@ public class BaseDataAdminRepository {
                 rs.getInt("success_count"),
                 rs.getInt("failure_count"),
                 rs.getInt("review_count"),
+                rs.getInt("auto_mapped_count"),
                 rs.getString("message")
         ), jobId);
         return jobs.isEmpty() ? null : jobs.getFirst();

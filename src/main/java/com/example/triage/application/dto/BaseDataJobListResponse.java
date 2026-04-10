@@ -23,6 +23,7 @@ public class BaseDataJobListResponse {
         private Integer successCount;
         private Integer failureCount;
         private Integer reviewCount;
+        private Integer autoMappedCount;
         private String message;
 
         public Long getJobId() {
@@ -79,6 +80,14 @@ public class BaseDataJobListResponse {
 
         public void setReviewCount(Integer reviewCount) {
             this.reviewCount = reviewCount;
+        }
+
+        public Integer getAutoMappedCount() {
+            return autoMappedCount;
+        }
+
+        public void setAutoMappedCount(Integer autoMappedCount) {
+            this.autoMappedCount = autoMappedCount;
         }
 
         public String getMessage() {

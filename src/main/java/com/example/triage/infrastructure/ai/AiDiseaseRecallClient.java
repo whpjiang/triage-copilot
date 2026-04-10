@@ -158,20 +158,15 @@ public class AiDiseaseRecallClient {
 
     private boolean isHighRisk(String symptoms) {
         return containsAny(symptoms,
-                "胸痛",
-                "呼吸困难",
-                "昏迷",
-                "意识不清",
-                "抽搐",
-                "大出血",
-                "偏瘫",
-                "言语不清",
-                "chest pain",
-                "shortness of breath",
-                "unconscious",
-                "convulsion",
-                "major bleeding",
-                "hemiplegia");
+                "剧烈胸痛", "持续胸闷", "窒息感", "呼吸急促", "呼吸困难",
+                "昏厥", "昏迷", "抽搐", "偏瘫", "言语不清",
+                "呕血", "黑便", "大出血", "剧烈腹痛",
+                "高热不退", "精神差", "嗜睡", "喂养困难",
+                "孕妇腹痛", "阴道流血", "胎动异常",
+                "突发头痛", "一侧肢体无力", "视物不清", "意识障碍",
+                "chest pain", "shortness of breath", "syncope", "convulsion",
+                "major bleeding", "hematemesis", "melena", "severe abdominal pain",
+                "severe headache", "blurred vision", "altered mental status");
     }
 
     private boolean containsAny(String text, String... keywords) {
