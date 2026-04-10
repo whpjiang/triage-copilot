@@ -1,6 +1,8 @@
 package com.example.triage.integration;
 
 import com.example.triagecopilot.TriageCopilotApplication;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -10,8 +12,11 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -23,11 +28,13 @@ class BaseDataControllerIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
     @Test
     void shouldImportDiseaseCsvAndExposeCheckSummary() throws Exception {
         String csv = """
                 disease_name,aliases,symptom_keywords,gender_rule,age_min,age_max,age_group,urgency_level,standard_dept_hint
-                测试疾病,测试别名,头痛|头晕,all,18,65,adult,medium,神经内科
+                test_disease,test_alias,headache|dizziness,all,18,65,adult,medium,neurology
                 """;
         MockMultipartFile file = new MockMultipartFile("file", "disease.csv", "text/csv", csv.getBytes());
 
@@ -50,7 +57,7 @@ class BaseDataControllerIntegrationTest {
     void shouldExposeTemplateAndPendingReviews() throws Exception {
         String csv = """
                 hospital_name,department_name,city,parent_department_name,department_intro,service_scope
-                示例医院,导入测试门诊,上海,内科,导入简介,导入范围
+                demo_hospital,import_review_clinic,shanghai,internal,import_intro,import_scope
                 """;
         MockMultipartFile file = new MockMultipartFile("file", "department.csv", "text/csv", csv.getBytes());
 
@@ -74,5 +81,47 @@ class BaseDataControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.pendingCount").isNumber())
                 .andExpect(jsonPath("$.data.items[0].datasetType").value("department"))
                 .andExpect(jsonPath("$.data.items[0].issueType").value("WAIT_CAPABILITY_MAPPING"));
+    }
+
+    @Test
+    void shouldResolvePendingReviewItem() throws Exception {
+        String csv = """
+                hospital_name,department_name,city,parent_department_name,department_intro,service_scope
+                demo_hospital,resolve_review_clinic,shanghai,internal,import_intro,import_scope
+                """;
+        MockMultipartFile file = new MockMultipartFile("file", "department.csv", "text/csv", csv.getBytes());
+
+        mockMvc.perform(multipart("/api/base-data/import")
+                        .file(file)
+                        .param("datasetType", "department")
+                        .contentType(MediaType.MULTIPART_FORM_DATA))
+                .andExpect(status().isOk());
+
+        String reviewResponse = mockMvc.perform(get("/api/base-data/reviews")
+                        .param("datasetType", "department")
+                        .param("limit", "1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode jsonNode = objectMapper.readTree(reviewResponse);
+        long reviewId = jsonNode.path("data").path("items").path(0).path("id").asLong();
+
+        mockMvc.perform(post("/api/base-data/reviews/resolve")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"reviewId": %s, "resolutionNote": "mapped manually"}
+                                """.formatted(reviewId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.reviewId").value(reviewId))
+                .andExpect(jsonPath("$.data.resolved").value(true))
+                .andExpect(jsonPath("$.data.pendingCount").isNumber());
+
+        mockMvc.perform(get("/api/base-data/reviews")
+                        .param("datasetType", "department")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[*].id", not(hasItem((int) reviewId))));
     }
 }

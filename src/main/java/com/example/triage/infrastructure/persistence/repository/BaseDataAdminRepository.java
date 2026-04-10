@@ -180,6 +180,14 @@ public class BaseDataAdminRepository {
         ), args.toArray());
     }
 
+    public int resolveReviewItem(Long reviewId, String resolutionNote) {
+        return jdbcTemplate.update(
+                "update import_review_item set resolved = 1, resolution_note = ?, update_time = current_timestamp where id = ? and resolved = 0",
+                resolutionNote,
+                reviewId
+        );
+    }
+
     private void appendReviewFilters(StringBuilder sql, List<Object> args, String datasetType, Long jobId) {
         if (datasetType != null && !datasetType.isBlank()) {
             sql.append(" and dataset_type = ?");

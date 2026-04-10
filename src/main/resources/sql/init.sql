@@ -122,6 +122,8 @@ CREATE TABLE IF NOT EXISTS import_review_item (
     raw_content TEXT,
     suggestion VARCHAR(500),
     resolved TINYINT DEFAULT 0,
+    resolution_note VARCHAR(500),
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

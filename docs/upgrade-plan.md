@@ -66,6 +66,14 @@
 - 导入接口继续写入 `import_review_item`，并可按 `datasetType`、`jobId` 查看待处理项
 - 让“导入数据 -> 自动入库 -> 人工补映射”这条链路更完整
 
+## 第六阶段增强
+
+第六阶段补充人工复核状态流转：
+
+- 新增 `POST /api/base-data/reviews/resolve`，支持关闭待复核项
+- 关闭复核项后，`GET /api/base-data/reviews` 与 `GET /api/base-data/check` 的待处理数量会同步减少
+- 让导入后的人工处理流程形成“生成待复核项 -> 查看 -> 关闭”的闭环
+
 ## 改造路径
 
 采用了“新骨架并行落地，旧入口逐步兼容”的方式：

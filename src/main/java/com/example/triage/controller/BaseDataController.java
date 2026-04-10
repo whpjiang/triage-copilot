@@ -3,15 +3,19 @@ package com.example.triage.controller;
 import com.example.triage.application.dto.BaseDataCheckResponse;
 import com.example.triage.application.dto.BaseDataImportResponse;
 import com.example.triage.application.dto.BaseDataReviewResponse;
+import com.example.triage.application.dto.BaseDataReviewResolveRequest;
+import com.example.triage.application.dto.BaseDataReviewResolveResponse;
 import com.example.triage.application.dto.BaseDataTemplateResponse;
 import com.example.triage.application.service.BaseDataCheckService;
 import com.example.triage.application.service.BaseDataImportService;
 import com.example.triage.application.service.BaseDataReviewService;
+import com.example.triage.application.service.BaseDataReviewResolveService;
 import com.example.triage.application.service.BaseDataTemplateService;
 import com.example.triagecopilot.common.ApiResponse;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,15 +29,18 @@ public class BaseDataController {
     private final BaseDataCheckService baseDataCheckService;
     private final BaseDataTemplateService baseDataTemplateService;
     private final BaseDataReviewService baseDataReviewService;
+    private final BaseDataReviewResolveService baseDataReviewResolveService;
 
     public BaseDataController(BaseDataImportService baseDataImportService,
                               BaseDataCheckService baseDataCheckService,
                               BaseDataTemplateService baseDataTemplateService,
-                              BaseDataReviewService baseDataReviewService) {
+                              BaseDataReviewService baseDataReviewService,
+                              BaseDataReviewResolveService baseDataReviewResolveService) {
         this.baseDataImportService = baseDataImportService;
         this.baseDataCheckService = baseDataCheckService;
         this.baseDataTemplateService = baseDataTemplateService;
         this.baseDataReviewService = baseDataReviewService;
+        this.baseDataReviewResolveService = baseDataReviewResolveService;
     }
 
     @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -58,5 +65,10 @@ public class BaseDataController {
                                                            @RequestParam(value = "limit", defaultValue = "20") Integer limit) {
         int normalizedLimit = Math.max(1, Math.min(limit, 100));
         return ApiResponse.success(baseDataReviewService.listPendingReviews(datasetType, jobId, normalizedLimit));
+    }
+
+    @PostMapping("/reviews/resolve")
+    public ApiResponse<BaseDataReviewResolveResponse> resolveReview(@RequestBody BaseDataReviewResolveRequest request) {
+        return ApiResponse.success(baseDataReviewResolveService.resolve(request));
     }
 }
