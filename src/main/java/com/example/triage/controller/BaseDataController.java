@@ -2,8 +2,12 @@ package com.example.triage.controller;
 
 import com.example.triage.application.dto.BaseDataCheckResponse;
 import com.example.triage.application.dto.BaseDataImportResponse;
+import com.example.triage.application.dto.BaseDataReviewResponse;
+import com.example.triage.application.dto.BaseDataTemplateResponse;
 import com.example.triage.application.service.BaseDataCheckService;
 import com.example.triage.application.service.BaseDataImportService;
+import com.example.triage.application.service.BaseDataReviewService;
+import com.example.triage.application.service.BaseDataTemplateService;
 import com.example.triagecopilot.common.ApiResponse;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,10 +23,17 @@ public class BaseDataController {
 
     private final BaseDataImportService baseDataImportService;
     private final BaseDataCheckService baseDataCheckService;
+    private final BaseDataTemplateService baseDataTemplateService;
+    private final BaseDataReviewService baseDataReviewService;
 
-    public BaseDataController(BaseDataImportService baseDataImportService, BaseDataCheckService baseDataCheckService) {
+    public BaseDataController(BaseDataImportService baseDataImportService,
+                              BaseDataCheckService baseDataCheckService,
+                              BaseDataTemplateService baseDataTemplateService,
+                              BaseDataReviewService baseDataReviewService) {
         this.baseDataImportService = baseDataImportService;
         this.baseDataCheckService = baseDataCheckService;
+        this.baseDataTemplateService = baseDataTemplateService;
+        this.baseDataReviewService = baseDataReviewService;
     }
 
     @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -34,5 +45,18 @@ public class BaseDataController {
     @GetMapping("/check")
     public ApiResponse<BaseDataCheckResponse> checkBaseData() {
         return ApiResponse.success(baseDataCheckService.check());
+    }
+
+    @GetMapping("/template")
+    public ApiResponse<BaseDataTemplateResponse> getTemplate(@RequestParam("datasetType") String datasetType) {
+        return ApiResponse.success(baseDataTemplateService.getTemplate(datasetType));
+    }
+
+    @GetMapping("/reviews")
+    public ApiResponse<BaseDataReviewResponse> listReviews(@RequestParam(value = "datasetType", required = false) String datasetType,
+                                                           @RequestParam(value = "jobId", required = false) Long jobId,
+                                                           @RequestParam(value = "limit", defaultValue = "20") Integer limit) {
+        int normalizedLimit = Math.max(1, Math.min(limit, 100));
+        return ApiResponse.success(baseDataReviewService.listPendingReviews(datasetType, jobId, normalizedLimit));
     }
 }

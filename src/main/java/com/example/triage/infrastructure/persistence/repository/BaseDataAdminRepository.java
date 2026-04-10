@@ -1,5 +1,6 @@
 package com.example.triage.infrastructure.persistence.repository;
 
+import com.example.triage.infrastructure.persistence.model.ImportReviewItemRecord;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -7,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.sql.PreparedStatement;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -146,6 +148,47 @@ public class BaseDataAdminRepository {
                 "diseases", diseases == null ? 0 : diseases,
                 "pending", pending == null ? 0 : pending
         );
+    }
+
+    public int countPendingReviews(String datasetType, Long jobId) {
+        StringBuilder sql = new StringBuilder("select count(1) from import_review_item where resolved = 0");
+        List<Object> args = new ArrayList<>();
+        appendReviewFilters(sql, args, datasetType, jobId);
+        Integer count = jdbcTemplate.queryForObject(sql.toString(), Integer.class, args.toArray());
+        return count == null ? 0 : count;
+    }
+
+    public List<ImportReviewItemRecord> findPendingReviews(String datasetType, Long jobId, int limit) {
+        StringBuilder sql = new StringBuilder("""
+                select id, job_id, dataset_type, item_key, issue_type, raw_content, suggestion, resolved
+                from import_review_item
+                where resolved = 0
+                """);
+        List<Object> args = new ArrayList<>();
+        appendReviewFilters(sql, args, datasetType, jobId);
+        sql.append(" order by id desc limit ?");
+        args.add(limit);
+        return jdbcTemplate.query(sql.toString(), (rs, rowNum) -> new ImportReviewItemRecord(
+                rs.getLong("id"),
+                rs.getLong("job_id"),
+                rs.getString("dataset_type"),
+                rs.getString("item_key"),
+                rs.getString("issue_type"),
+                rs.getString("raw_content"),
+                rs.getString("suggestion"),
+                rs.getBoolean("resolved")
+        ), args.toArray());
+    }
+
+    private void appendReviewFilters(StringBuilder sql, List<Object> args, String datasetType, Long jobId) {
+        if (datasetType != null && !datasetType.isBlank()) {
+            sql.append(" and dataset_type = ?");
+            args.add(datasetType);
+        }
+        if (jobId != null) {
+            sql.append(" and job_id = ?");
+            args.add(jobId);
+        }
     }
 
     private long extractGeneratedId(KeyHolder keyHolder) {
