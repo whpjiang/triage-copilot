@@ -33,6 +33,8 @@ class TriageFlowIntegrationTest {
                 .contains("cap_pediatrics", "cap_pediatric_fever_clinic");
         assertThat(response.getDepartmentRecommendations()).extracting(TriageAssessResponse.DepartmentRecommendationDto::getDepartmentName)
                 .contains("儿科门诊", "儿童发热门诊");
+        assertThat(response.getDoctorRecommendations()).extracting(TriageAssessResponse.DoctorRecommendationDto::getDoctorName)
+                .contains("张小安");
     }
 
     @Test
@@ -49,6 +51,8 @@ class TriageFlowIntegrationTest {
                 .contains("cap_geriatrics", "cap_memory_clinic");
         assertThat(response.getDepartmentRecommendations()).extracting(TriageAssessResponse.DepartmentRecommendationDto::getDepartmentName)
                 .contains("老年病科", "记忆障碍门诊");
+        assertThat(response.getDoctorRecommendations()).extracting(TriageAssessResponse.DoctorRecommendationDto::getDoctorName)
+                .contains("周记忆");
     }
 
     @Test
@@ -82,6 +86,8 @@ class TriageFlowIntegrationTest {
                 .contains("cap_spine_surgery", "cap_spine_pain_clinic");
         assertThat(spineResponse.getDepartmentRecommendations()).extracting(TriageAssessResponse.DepartmentRecommendationDto::getDepartmentName)
                 .contains("脊柱外科门诊", "脊柱疼痛专病门诊");
+        assertThat(spineResponse.getDoctorRecommendations()).extracting(TriageAssessResponse.DoctorRecommendationDto::getDoctorName)
+                .contains("李脊康");
 
         TriageAssessRequest transplant = new TriageAssessRequest();
         transplant.setSymptoms("移植术后异常复查");
@@ -94,6 +100,8 @@ class TriageFlowIntegrationTest {
                 .contains("cap_transplant_followup");
         assertThat(transplantResponse.getDepartmentRecommendations()).extracting(TriageAssessResponse.DepartmentRecommendationDto::getDepartmentName)
                 .contains("器官移植随访门诊");
+        assertThat(transplantResponse.getDoctorRecommendations()).extracting(TriageAssessResponse.DoctorRecommendationDto::getDoctorName)
+                .contains("王移植");
     }
 
     @Test
@@ -110,5 +118,7 @@ class TriageFlowIntegrationTest {
                 .contains("cap_andrology", "cap_male_urinary_clinic");
         assertThat(response.getDepartmentRecommendations()).extracting(TriageAssessResponse.DepartmentRecommendationDto::getDepartmentName)
                 .contains("男科门诊", "男性排尿异常门诊");
+        assertThat(response.getDoctorRecommendations()).extracting(TriageAssessResponse.DoctorRecommendationDto::getDoctorName)
+                .contains("陈泌宁");
     }
 }

@@ -83,6 +83,30 @@
 - `weight`
 - `source`
 
+### `doctor_profile`
+
+医生扩展位主表。
+
+关键字段：
+
+- `hospital_id`
+- `department_id`
+- `doctor_name`
+- `title`
+- `specialty_text`
+- `gender_rule` / `age_min` / `age_max`
+- `crowd_tags_json`
+
+### `doctor_capability_rel`
+
+医生与医学能力映射表，用于在已确定科室的前提下进一步做医生候选排序。
+
+关键字段：
+
+- `doctor_id`
+- `capability_code`
+- `weight`
+
 ## 导入与复核表
 
 ### `import_job_record`

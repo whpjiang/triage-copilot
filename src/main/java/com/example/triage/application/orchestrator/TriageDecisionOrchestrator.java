@@ -55,6 +55,17 @@ public class TriageDecisionOrchestrator {
             dto.setScore(item.score());
             return dto;
         }).toList());
+        response.setDoctorRecommendations(assessment.doctorRecommendations().stream().map(item -> {
+            TriageAssessResponse.DoctorRecommendationDto dto = new TriageAssessResponse.DoctorRecommendationDto();
+            dto.setDoctorId(item.doctorId());
+            dto.setDoctorName(item.doctorName());
+            dto.setTitle(item.title());
+            dto.setHospitalName(item.hospitalName());
+            dto.setDepartmentName(item.departmentName());
+            dto.setSpecialtyText(item.specialtyText());
+            dto.setScore(item.score());
+            return dto;
+        }).toList());
         response.setExplanation(assessment.explanation());
         return response;
     }

@@ -125,6 +125,30 @@ CREATE TABLE IF NOT EXISTS import_review_item (
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS doctor_profile (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    hospital_id BIGINT NOT NULL,
+    department_id BIGINT NOT NULL,
+    doctor_name VARCHAR(128) NOT NULL,
+    title VARCHAR(64),
+    specialty_text TEXT,
+    gender_rule VARCHAR(32) DEFAULT 'all',
+    age_min INT,
+    age_max INT,
+    crowd_tags_json TEXT,
+    active_status TINYINT DEFAULT 1,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS doctor_capability_rel (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    doctor_id BIGINT NOT NULL,
+    capability_code VARCHAR(64),
+    weight DECIMAL(8,2) DEFAULT 0.30,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 DELETE FROM disease_capability_rel;
 DELETE FROM department_capability_rel;
 DELETE FROM disease_alias;
@@ -132,6 +156,8 @@ DELETE FROM disease_master;
 DELETE FROM medical_capability_catalog;
 DELETE FROM hospital_department;
 DELETE FROM hospital;
+DELETE FROM doctor_capability_rel;
+DELETE FROM doctor_profile;
 
 INSERT INTO disease_master (disease_code, disease_name, aliases_json, symptom_keywords, gender_rule, age_min, age_max, age_group, urgency_level, review_status, deleted) VALUES
 ('acute_upper_respiratory_infection', '急性上呼吸道感染', '["感冒","上呼吸道感染","儿童咳嗽"]', '["发热","咳嗽","咽痛","流涕"]', 'all', 0, 80, 'all', 'medium', 'approved', 0),
@@ -200,3 +226,17 @@ INSERT INTO department_capability_rel (department_id, capability_code, support_l
 (5, 'cap_spine_surgery', 'PRIMARY', 1.10, 'seed'),
 (10, 'cap_spine_pain_clinic', 'PRIMARY', 1.25, 'seed'),
 (6, 'cap_transplant_followup', 'PRIMARY', 1.20, 'seed');
+
+INSERT INTO doctor_profile (id, hospital_id, department_id, doctor_name, title, specialty_text, gender_rule, age_min, age_max, crowd_tags_json, active_status) VALUES
+(1, 1, 7, '张小安', '副主任医师', '儿童发热与呼吸道感染', 'all', 0, 14, '["child"]', 1),
+(2, 1, 8, '周记忆', '主任医师', '老年认知障碍与记忆下降', 'all', 60, 120, '["elderly"]', 1),
+(3, 1, 9, '陈泌宁', '副主任医师', '男性排尿异常与前列腺专病', 'male_only', 18, 120, '[]', 1),
+(4, 1, 10, '李脊康', '主任医师', '腰腿痛与脊柱疼痛专病', 'all', 16, 80, '[]', 1),
+(5, 2, 6, '王移植', '主任医师', '器官移植术后随访与排异管理', 'all', 0, 120, '["transplant_followup"]', 1);
+
+INSERT INTO doctor_capability_rel (doctor_id, capability_code, weight) VALUES
+(1, 'cap_pediatric_fever_clinic', 0.45),
+(2, 'cap_memory_clinic', 0.45),
+(3, 'cap_male_urinary_clinic', 0.45),
+(4, 'cap_spine_pain_clinic', 0.45),
+(5, 'cap_transplant_followup', 0.50);

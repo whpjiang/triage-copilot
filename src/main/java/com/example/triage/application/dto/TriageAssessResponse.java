@@ -10,6 +10,7 @@ public class TriageAssessResponse {
     private List<DiseaseCandidateDto> candidateDiseases = new ArrayList<>();
     private List<CapabilityRecommendationDto> capabilityRecommendations = new ArrayList<>();
     private List<DepartmentRecommendationDto> departmentRecommendations = new ArrayList<>();
+    private List<DoctorRecommendationDto> doctorRecommendations = new ArrayList<>();
     private String explanation;
 
     public PopulationProfileDto getPopulationProfile() {
@@ -50,6 +51,14 @@ public class TriageAssessResponse {
 
     public void setDepartmentRecommendations(List<DepartmentRecommendationDto> departmentRecommendations) {
         this.departmentRecommendations = departmentRecommendations;
+    }
+
+    public List<DoctorRecommendationDto> getDoctorRecommendations() {
+        return doctorRecommendations;
+    }
+
+    public void setDoctorRecommendations(List<DoctorRecommendationDto> doctorRecommendations) {
+        this.doctorRecommendations = doctorRecommendations;
     }
 
     public String getExplanation() {
@@ -259,6 +268,72 @@ public class TriageAssessResponse {
 
         public void setSupportLevel(String supportLevel) {
             this.supportLevel = supportLevel;
+        }
+
+        public Double getScore() {
+            return score;
+        }
+
+        public void setScore(Double score) {
+            this.score = score;
+        }
+    }
+
+    public static class DoctorRecommendationDto {
+        private Long doctorId;
+        private String doctorName;
+        private String title;
+        private String hospitalName;
+        private String departmentName;
+        private String specialtyText;
+        private Double score;
+
+        public Long getDoctorId() {
+            return doctorId;
+        }
+
+        public void setDoctorId(Long doctorId) {
+            this.doctorId = doctorId;
+        }
+
+        public String getDoctorName() {
+            return doctorName;
+        }
+
+        public void setDoctorName(String doctorName) {
+            this.doctorName = doctorName;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public void setTitle(String title) {
+            this.title = title;
+        }
+
+        public String getHospitalName() {
+            return hospitalName;
+        }
+
+        public void setHospitalName(String hospitalName) {
+            this.hospitalName = hospitalName;
+        }
+
+        public String getDepartmentName() {
+            return departmentName;
+        }
+
+        public void setDepartmentName(String departmentName) {
+            this.departmentName = departmentName;
+        }
+
+        public String getSpecialtyText() {
+            return specialtyText;
+        }
+
+        public void setSpecialtyText(String specialtyText) {
+            this.specialtyText = specialtyText;
         }
 
         public Double getScore() {

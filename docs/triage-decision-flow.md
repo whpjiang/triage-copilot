@@ -12,7 +12,8 @@
 6. `MedicalCapabilityService` 将疾病候选映射为标准医学能力并结合路径标签排序
 7. 再次按人群约束过滤医学能力
 8. `LocalDepartmentMappingService` 将医学能力映射到本地医院真实科室
-9. `TriageExplanationService` 生成结构化解释文本
+9. `DoctorRecommendationService` 在本地科室基础上推荐医生候选
+10. `TriageExplanationService` 生成结构化解释文本
 
 ## AI 边界
 
@@ -32,6 +33,7 @@
 - `candidateDiseases`
 - `capabilityRecommendations`
 - `departmentRecommendations`
+- `doctorRecommendations`
 - `explanation`
 
 这让调用方可以清楚看到：
@@ -40,6 +42,7 @@
 - 为什么会召回这些医学能力
 - 哪些场景路径参与了排序
 - 最终落到哪个本地真实科室
+- 对应有哪些本地医生候选可作为扩展位返回
 
 ## 复杂场景承载方式
 

@@ -18,6 +18,7 @@ public class TriageDecisionService {
     private final DiseaseCandidateService diseaseCandidateService;
     private final MedicalCapabilityService medicalCapabilityService;
     private final LocalDepartmentMappingService localDepartmentMappingService;
+    private final DoctorRecommendationService doctorRecommendationService;
     private final TriageExplanationService triageExplanationService;
 
     public TriageDecisionService(PopulationProfileService populationProfileService,
@@ -25,12 +26,14 @@ public class TriageDecisionService {
                                  DiseaseCandidateService diseaseCandidateService,
                                  MedicalCapabilityService medicalCapabilityService,
                                  LocalDepartmentMappingService localDepartmentMappingService,
+                                 DoctorRecommendationService doctorRecommendationService,
                                  TriageExplanationService triageExplanationService) {
         this.populationProfileService = populationProfileService;
         this.pathwayTagService = pathwayTagService;
         this.diseaseCandidateService = diseaseCandidateService;
         this.medicalCapabilityService = medicalCapabilityService;
         this.localDepartmentMappingService = localDepartmentMappingService;
+        this.doctorRecommendationService = doctorRecommendationService;
         this.triageExplanationService = triageExplanationService;
     }
 
@@ -40,7 +43,8 @@ public class TriageDecisionService {
         List<DiseaseCandidate> diseases = diseaseCandidateService.identifyCandidates(request.getSymptoms(), profile);
         List<CapabilityRecommendation> capabilities = medicalCapabilityService.recommendCapabilities(diseases, profile, pathwayTags);
         List<DepartmentRecommendation> departments = localDepartmentMappingService.mapDepartments(capabilities, profile, request.getCity());
-        String explanation = triageExplanationService.explain(profile, pathwayTags, diseases, capabilities, departments);
-        return new TriageAssessment(profile, pathwayTags, diseases, capabilities, departments, explanation);
+        var doctors = doctorRecommendationService.recommendDoctors(departments, capabilities, profile);
+        String explanation = triageExplanationService.explain(profile, pathwayTags, diseases, capabilities, departments, doctors);
+        return new TriageAssessment(profile, pathwayTags, diseases, capabilities, departments, doctors, explanation);
     }
 }
