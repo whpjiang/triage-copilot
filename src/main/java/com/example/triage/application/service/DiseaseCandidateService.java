@@ -2,6 +2,7 @@ package com.example.triage.application.service;
 
 import com.example.triage.domain.disease.DiseaseCandidate;
 import com.example.triage.domain.population.PopulationProfile;
+import com.example.triage.infrastructure.ai.AiDiseaseRecallClient;
 import com.example.triage.infrastructure.persistence.model.DiseaseRecord;
 import com.example.triage.infrastructure.persistence.repository.DiseaseDataRepository;
 import org.springframework.stereotype.Service;
@@ -19,19 +20,28 @@ public class DiseaseCandidateService {
 
     private final DiseaseDataRepository diseaseDataRepository;
     private final DiseaseNormalizeService diseaseNormalizeService;
+    private final AiDiseaseRecallClient aiDiseaseRecallClient;
 
-    public DiseaseCandidateService(DiseaseDataRepository diseaseDataRepository, DiseaseNormalizeService diseaseNormalizeService) {
+    public DiseaseCandidateService(DiseaseDataRepository diseaseDataRepository,
+                                   DiseaseNormalizeService diseaseNormalizeService,
+                                   AiDiseaseRecallClient aiDiseaseRecallClient) {
         this.diseaseDataRepository = diseaseDataRepository;
         this.diseaseNormalizeService = diseaseNormalizeService;
+        this.aiDiseaseRecallClient = aiDiseaseRecallClient;
     }
 
     public List<DiseaseCandidate> identifyCandidates(String symptoms, PopulationProfile profile) {
         String normalizedSymptoms = symptoms == null ? "" : symptoms.toLowerCase(Locale.ROOT);
         List<DiseaseCandidate> candidates = new ArrayList<>();
-        for (DiseaseRecord disease : diseaseDataRepository.findApprovedDiseases()) {
-            if (!diseaseNormalizeService.matchesGenderAndAge(disease.genderRule(), disease.ageMin(), disease.ageMax(), profile.gender(), profile.age())) {
-                continue;
-            }
+        List<DiseaseRecord> eligibleDiseases = diseaseDataRepository.findApprovedDiseases().stream()
+                .filter(disease -> diseaseNormalizeService.matchesGenderAndAge(
+                        disease.genderRule(),
+                        disease.ageMin(),
+                        disease.ageMax(),
+                        profile.gender(),
+                        profile.age()))
+                .toList();
+        for (DiseaseRecord disease : eligibleDiseases) {
             List<String> matched = new ArrayList<>();
             double score = 0D;
             if (normalizedSymptoms.contains(diseaseNormalizeService.normalizeText(disease.diseaseName()))) {
@@ -71,9 +81,53 @@ public class DiseaseCandidateService {
                 return new DiseaseCandidate(existing.diseaseCode(), existing.diseaseName(), keywords.stream().distinct().toList(), existing.urgencyLevel(), existing.score() + candidate.score());
             });
         }
+        mergeAiSuggestions(symptoms, profile, eligibleDiseases, merged);
         return merged.values().stream()
                 .sorted(Comparator.comparingDouble(DiseaseCandidate::score).reversed())
                 .limit(5)
                 .toList();
+    }
+
+    private void mergeAiSuggestions(String symptoms,
+                                    PopulationProfile profile,
+                                    List<DiseaseRecord> eligibleDiseases,
+                                    Map<String, DiseaseCandidate> merged) {
+        if (eligibleDiseases.isEmpty()) {
+            return;
+        }
+        Map<String, DiseaseRecord> diseaseByCode = eligibleDiseases.stream()
+                .collect(LinkedHashMap::new, (map, item) -> map.put(item.diseaseCode(), item), Map::putAll);
+        List<String> suggestedCodes = aiDiseaseRecallClient.suggestDiseaseCodes(
+                symptoms,
+                profile,
+                eligibleDiseases,
+                new ArrayList<>(merged.values())
+        );
+        for (String code : suggestedCodes) {
+            DiseaseRecord disease = diseaseByCode.get(diseaseNormalizeService.normalizeText(code));
+            if (disease == null) {
+                continue;
+            }
+            merged.compute(disease.diseaseCode(), (key, existing) -> {
+                if (existing == null) {
+                    return new DiseaseCandidate(
+                            disease.diseaseCode(),
+                            disease.diseaseName(),
+                            List.of("ai_supplement"),
+                            disease.urgencyLevel(),
+                            0.8D
+                    );
+                }
+                List<String> keywords = new ArrayList<>(existing.matchedKeywords());
+                keywords.add("ai_supplement");
+                return new DiseaseCandidate(
+                        existing.diseaseCode(),
+                        existing.diseaseName(),
+                        keywords.stream().distinct().toList(),
+                        existing.urgencyLevel(),
+                        existing.score() + 0.3D
+                );
+            });
+        }
     }
 }
