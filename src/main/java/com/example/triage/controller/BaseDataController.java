@@ -2,12 +2,15 @@ package com.example.triage.controller;
 
 import com.example.triage.application.dto.BaseDataCheckResponse;
 import com.example.triage.application.dto.BaseDataImportResponse;
+import com.example.triage.application.dto.BaseDataJobDetailResponse;
+import com.example.triage.application.dto.BaseDataJobListResponse;
 import com.example.triage.application.dto.BaseDataReviewResponse;
 import com.example.triage.application.dto.BaseDataReviewResolveRequest;
 import com.example.triage.application.dto.BaseDataReviewResolveResponse;
 import com.example.triage.application.dto.BaseDataTemplateResponse;
 import com.example.triage.application.service.BaseDataCheckService;
 import com.example.triage.application.service.BaseDataImportService;
+import com.example.triage.application.service.BaseDataJobService;
 import com.example.triage.application.service.BaseDataReviewService;
 import com.example.triage.application.service.BaseDataReviewResolveService;
 import com.example.triage.application.service.BaseDataTemplateService;
@@ -27,17 +30,20 @@ public class BaseDataController {
 
     private final BaseDataImportService baseDataImportService;
     private final BaseDataCheckService baseDataCheckService;
+    private final BaseDataJobService baseDataJobService;
     private final BaseDataTemplateService baseDataTemplateService;
     private final BaseDataReviewService baseDataReviewService;
     private final BaseDataReviewResolveService baseDataReviewResolveService;
 
     public BaseDataController(BaseDataImportService baseDataImportService,
                               BaseDataCheckService baseDataCheckService,
+                              BaseDataJobService baseDataJobService,
                               BaseDataTemplateService baseDataTemplateService,
                               BaseDataReviewService baseDataReviewService,
                               BaseDataReviewResolveService baseDataReviewResolveService) {
         this.baseDataImportService = baseDataImportService;
         this.baseDataCheckService = baseDataCheckService;
+        this.baseDataJobService = baseDataJobService;
         this.baseDataTemplateService = baseDataTemplateService;
         this.baseDataReviewService = baseDataReviewService;
         this.baseDataReviewResolveService = baseDataReviewResolveService;
@@ -52,6 +58,19 @@ public class BaseDataController {
     @GetMapping("/check")
     public ApiResponse<BaseDataCheckResponse> checkBaseData() {
         return ApiResponse.success(baseDataCheckService.check());
+    }
+
+    @GetMapping("/jobs")
+    public ApiResponse<BaseDataJobListResponse> listJobs(@RequestParam(value = "limit", defaultValue = "20") Integer limit) {
+        int normalizedLimit = Math.max(1, Math.min(limit, 100));
+        return ApiResponse.success(baseDataJobService.listJobs(normalizedLimit));
+    }
+
+    @GetMapping("/jobs/detail")
+    public ApiResponse<BaseDataJobDetailResponse> getJobDetail(@RequestParam("jobId") Long jobId,
+                                                               @RequestParam(value = "failureLimit", defaultValue = "20") Integer failureLimit) {
+        int normalizedLimit = Math.max(1, Math.min(failureLimit, 100));
+        return ApiResponse.success(baseDataJobService.getJobDetail(jobId, normalizedLimit));
     }
 
     @GetMapping("/template")

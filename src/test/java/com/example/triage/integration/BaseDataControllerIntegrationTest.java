@@ -124,4 +124,41 @@ class BaseDataControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items[*].id", not(hasItem((int) reviewId))));
     }
+
+    @Test
+    void shouldExposeImportJobListAndFailureDetails() throws Exception {
+        String csv = """
+                disease_name,aliases,symptom_keywords,gender_rule,age_min,age_max,age_group,urgency_level,standard_dept_hint
+                valid_disease,valid_alias,headache|dizziness,all,18,65,adult,medium,neurology
+                ,missing_name,nausea,all,18,65,adult,low,internal
+                """;
+        MockMultipartFile file = new MockMultipartFile("file", "job-detail.csv", "text/csv", csv.getBytes());
+
+        String importResponse = mockMvc.perform(multipart("/api/base-data/import")
+                        .file(file)
+                        .param("datasetType", "disease")
+                        .contentType(MediaType.MULTIPART_FORM_DATA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.successCount").value(1))
+                .andExpect(jsonPath("$.data.failureCount").value(1))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        long jobId = objectMapper.readTree(importResponse).path("data").path("jobId").asLong();
+
+        mockMvc.perform(get("/api/base-data/jobs").param("limit", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.jobs[0].jobId").isNumber())
+                .andExpect(jsonPath("$.data.jobs[0].datasetType").isString());
+
+        mockMvc.perform(get("/api/base-data/jobs/detail")
+                        .param("jobId", String.valueOf(jobId))
+                        .param("failureLimit", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.job.jobId").value(jobId))
+                .andExpect(jsonPath("$.data.job.failureCount").value(1))
+                .andExpect(jsonPath("$.data.failures[0].rowNumber").isNumber())
+                .andExpect(jsonPath("$.data.failures[0].errorMessage").value("missing field: disease_name"));
+    }
 }

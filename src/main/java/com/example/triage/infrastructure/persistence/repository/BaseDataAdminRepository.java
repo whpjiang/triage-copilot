@@ -1,5 +1,7 @@
 package com.example.triage.infrastructure.persistence.repository;
 
+import com.example.triage.infrastructure.persistence.model.ImportFailureLogRecord;
+import com.example.triage.infrastructure.persistence.model.ImportJobRecord;
 import com.example.triage.infrastructure.persistence.model.ImportReviewItemRecord;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -186,6 +188,58 @@ public class BaseDataAdminRepository {
                 resolutionNote,
                 reviewId
         );
+    }
+
+    public List<ImportJobRecord> findRecentJobs(int limit) {
+        return jdbcTemplate.query("""
+                select id, dataset_type, file_name, status, success_count, failure_count, review_count, message
+                from import_job_record
+                order by id desc
+                limit ?
+                """, (rs, rowNum) -> new ImportJobRecord(
+                rs.getLong("id"),
+                rs.getString("dataset_type"),
+                rs.getString("file_name"),
+                rs.getString("status"),
+                rs.getInt("success_count"),
+                rs.getInt("failure_count"),
+                rs.getInt("review_count"),
+                rs.getString("message")
+        ), limit);
+    }
+
+    public ImportJobRecord findJobById(Long jobId) {
+        List<ImportJobRecord> jobs = jdbcTemplate.query("""
+                select id, dataset_type, file_name, status, success_count, failure_count, review_count, message
+                from import_job_record
+                where id = ?
+                """, (rs, rowNum) -> new ImportJobRecord(
+                rs.getLong("id"),
+                rs.getString("dataset_type"),
+                rs.getString("file_name"),
+                rs.getString("status"),
+                rs.getInt("success_count"),
+                rs.getInt("failure_count"),
+                rs.getInt("review_count"),
+                rs.getString("message")
+        ), jobId);
+        return jobs.isEmpty() ? null : jobs.getFirst();
+    }
+
+    public List<ImportFailureLogRecord> findFailuresByJobId(Long jobId, int limit) {
+        return jdbcTemplate.query("""
+                select id, job_id, row_number, raw_content, error_message
+                from import_failure_log
+                where job_id = ?
+                order by id asc
+                limit ?
+                """, (rs, rowNum) -> new ImportFailureLogRecord(
+                rs.getLong("id"),
+                rs.getLong("job_id"),
+                rs.getInt("row_number"),
+                rs.getString("raw_content"),
+                rs.getString("error_message")
+        ), jobId, limit);
     }
 
     private void appendReviewFilters(StringBuilder sql, List<Object> args, String datasetType, Long jobId) {
