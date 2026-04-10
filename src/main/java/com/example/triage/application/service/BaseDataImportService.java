@@ -46,7 +46,7 @@ public class BaseDataImportService {
         int autoMapped = 0;
         List<String> messages = new ArrayList<>();
         try {
-            List<Map<String, String>> rows = tabularDataReader.read(file);
+            List<Map<String, String>> rows = tabularDataReader.read(file, resolveSheetName(normalizedType));
             int rowNumber = 1;
             for (Map<String, String> sourceRow : rows) {
                 rowNumber++;
@@ -64,7 +64,8 @@ public class BaseDataImportService {
                     review += createFailureReview(jobId, normalizedType, rowNumber, sourceRow, ex.getMessage());
                 }
             }
-            String summary = "Imported " + success + " rows, failures " + failure + ", auto-mapped " + autoMapped + ", reviews " + review;
+            String summary = "Imported %s rows, failures %s, auto-mapped %s, reviews %s"
+                    .formatted(success, failure, autoMapped, review);
             baseDataAdminRepository.finishImportJob(jobId, success, failure, review, autoMapped, "DONE", summary);
             messages.add(summary);
         } catch (Exception ex) {
@@ -124,18 +125,18 @@ public class BaseDataImportService {
 
         DiseaseCapabilityHintService.HintMappingResult hintMapping = diseaseCapabilityHintService.map(row.get("standard_dept_hint"));
         if (hintMapping.mapped()) {
-            for (String capabilityCode : hintMapping.capabilityCodes()) {
-                baseDataAdminRepository.upsertDiseaseCapabilityRelation(
-                        diseaseCode,
-                        capabilityCode,
-                        "PRIMARY",
-                        1.00D,
-                        "imported from standard_dept_hint row " + rowNumber
-                );
-            }
+            String capabilityCode = hintMapping.capabilityCodes().getFirst();
+            baseDataAdminRepository.upsertDiseaseCapabilityRelation(
+                    diseaseCode,
+                    capabilityCode,
+                    "PRIMARY",
+                    1.00D,
+                    "auto-mapped from standard_dept_hint row " + rowNumber
+            );
         } else {
             String issueType = hintMapping.reviewIssueType() == null ? "MISSING_STANDARD_DEPT_HINT" : hintMapping.reviewIssueType();
-            review += addReview(jobId, "disease", diseaseCode, issueType, row, reviewSuggestionForHint(issueType));
+            review += addReview(jobId, "disease", diseaseCode, issueType, row,
+                    reviewSuggestionForHint(issueType, row.get("standard_dept_hint"), hintMapping.capabilityCodes()));
         }
         return new RowImportResult(review, 0);
     }
@@ -158,6 +159,12 @@ public class BaseDataImportService {
                 ageBoundary.ageMax(),
                 diseaseNormalizeService.toJsonArray(diseaseNormalizeService.parseList(firstNonBlank(row.get("crowd_tags"), row.get("age_group"))))
         );
+
+        int review = 0;
+        if (isHospitalNameSuspicious(hospitalName)) {
+            review += addReview(jobId, "hospital", buildCode(hospitalName), "HOSPITAL_NAME_NEEDS_CONFIRM", row,
+                    "医院名称疑似占位符或待确认，请人工确认");
+        }
 
         DepartmentCapabilityAutoMappingService.MappingEvaluation evaluation =
                 departmentCapabilityAutoMappingService.evaluate(
@@ -182,7 +189,6 @@ public class BaseDataImportService {
             autoMapped++;
         }
 
-        int review = 0;
         for (String issueType : evaluation.reviewIssues()) {
             review += addReview(jobId, "department", String.valueOf(departmentId), issueType, row, evaluation.reviewSuggestion());
         }
@@ -227,10 +233,10 @@ public class BaseDataImportService {
         if (containsAny(normalized, "女", "female", "妇")) {
             return new NormalizedGenderRule("female_only", true);
         }
-        if (containsAny(normalized, "男", "male", "前列腺", "andrology")) {
+        if (containsAny(normalized, "男", "male", "前列腺", "andrology", "男科")) {
             return new NormalizedGenderRule("male_only", true);
         }
-        if (containsAny(normalized, "all", "不限", "通用", "unknown")) {
+        if (containsAny(normalized, "all", "不限", "通用", "unknown", "全人群")) {
             return new NormalizedGenderRule("all", true);
         }
         return new NormalizedGenderRule("all", false);
@@ -247,10 +253,10 @@ public class BaseDataImportService {
             return new AgeBoundary(null, null, true);
         }
         String normalized = diseaseNormalizeService.normalizeText(range);
-        if (containsAny(normalized, "儿童", "儿科", "child")) {
+        if (containsAny(normalized, "儿童", "儿科", "child", "小儿")) {
             return new AgeBoundary(0, 11, true);
         }
-        if (containsAny(normalized, "青少年", "adolescent")) {
+        if (containsAny(normalized, "青少年", "adolescent", "teen")) {
             return new AgeBoundary(12, 17, true);
         }
         if (containsAny(normalized, "成人", "adult")) {
@@ -259,7 +265,7 @@ public class BaseDataImportService {
         if (containsAny(normalized, "老年", "elderly")) {
             return new AgeBoundary(65, 120, true);
         }
-        String digits = normalized.replaceAll("[^0-9\\-~岁至]", " ").trim();
+        String digits = normalized.replaceAll("[^0-9\\-~至岁]", " ").trim();
         if (digits.matches(".*\\d+.*\\d+.*")) {
             List<Integer> values = new ArrayList<>();
             for (String part : digits.split("[^0-9]+")) {
@@ -293,6 +299,14 @@ public class BaseDataImportService {
             return "department";
         }
         return "disease";
+    }
+
+    private String resolveSheetName(String datasetType) {
+        return switch (datasetType) {
+            case "wuhan_disease" -> "Import_Disease";
+            case "wuhan_department" -> "Import_Department";
+            default -> null;
+        };
     }
 
     private String require(Map<String, String> row, String key) {
@@ -339,12 +353,12 @@ public class BaseDataImportService {
         return "all";
     }
 
-    private String reviewSuggestionForHint(String issueType) {
-        if ("UNMAPPED_STANDARD_DEPT_HINT".equals(issueType)) {
-            return "标准科室线索未能映射到医学能力，请人工补充";
+    private String reviewSuggestionForHint(String issueType, String hint, List<String> capabilityCodes) {
+        if ("DISEASE_CAPABILITY_UNMAPPED".equals(issueType)) {
+            return "standard_dept_hint 无法映射到医学能力，请人工补充; hint=%s".formatted(firstNonBlank(hint));
         }
-        if ("AMBIGUOUS_STANDARD_DEPT_HINT".equals(issueType)) {
-            return "标准科室线索映射到了多个医学能力，请人工确认";
+        if ("DISEASE_CAPABILITY_MULTI_MATCH".equals(issueType)) {
+            return "standard_dept_hint 命中多个医学能力，请人工确认; hint=%s; matched=%s".formatted(firstNonBlank(hint), capabilityCodes);
         }
         return "请补充疾病到医学能力的映射线索";
     }
@@ -356,6 +370,13 @@ public class BaseDataImportService {
             }
         }
         return false;
+    }
+
+    private boolean isHospitalNameSuspicious(String hospitalName) {
+        String normalized = diseaseNormalizeService.normalizeText(hospitalName);
+        return normalized.matches("^医院[_-]?\\d+$")
+                || normalized.matches("^hospital[_-]?\\d+$")
+                || normalized.startsWith("demo");
     }
 
     private String cleanText(String value) {

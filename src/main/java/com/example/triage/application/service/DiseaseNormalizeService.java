@@ -6,12 +6,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 @Service
 public class DiseaseNormalizeService {
+
+    private static final int MAX_ALIAS_LENGTH = 80;
+    private static final int MAX_KEYWORD_LENGTH = 40;
 
     private final ObjectMapper objectMapper;
 
@@ -44,15 +48,16 @@ public class DiseaseNormalizeService {
         try {
             if (trimmed.startsWith("[")) {
                 return objectMapper.readValue(trimmed, new TypeReference<List<String>>() {
-                }).stream().map(this::normalizeText).filter(StringUtils::hasText).distinct().toList();
+                }).stream()
+                        .map(this::cleanListToken)
+                        .filter(StringUtils::hasText)
+                        .filter(value -> value.length() <= MAX_ALIAS_LENGTH)
+                        .distinct()
+                        .toList();
             }
         } catch (Exception ignored) {
         }
-        return Arrays.stream(trimmed.split("[,，|/；;\\s]+"))
-                .map(this::normalizeText)
-                .filter(StringUtils::hasText)
-                .distinct()
-                .toList();
+        return splitTokens(trimmed, MAX_ALIAS_LENGTH);
     }
 
     public String toJsonArray(List<String> values) {
@@ -67,31 +72,92 @@ public class DiseaseNormalizeService {
         if (!StringUtils.hasText(text)) {
             return List.of();
         }
-        List<String> values = new ArrayList<>();
-        String normalized = normalizeText(text);
-        for (String token : normalized.split("[,，|/；;\\s]+")) {
-            if (token.length() > 1) {
-                values.add(token);
+        Set<String> values = new LinkedHashSet<>();
+        for (String token : splitTokens(text, MAX_KEYWORD_LENGTH)) {
+            if (token.length() < 2) {
+                continue;
             }
+            values.add(token);
         }
-        return values.stream().distinct().toList();
+        return new ArrayList<>(values);
     }
 
     public String normalizeGenderRule(String genderRule) {
         String value = normalizeText(genderRule);
-        if (!StringUtils.hasText(value) || "all".equals(value) || "any".equals(value) || "unknown".equals(value)) {
+        if (!StringUtils.hasText(value)
+                || "all".equals(value)
+                || "any".equals(value)
+                || "unknown".equals(value)
+                || value.contains("不限")
+                || value.contains("通用")
+                || value.contains("男女")
+                || value.contains("全人群")) {
             return "all";
         }
-        if (value.contains("female") || value.contains("女")) {
+        if (value.contains("female") || value.contains("女") || value.contains("妇")) {
             return "female_only";
         }
-        if (value.contains("male") || value.contains("男")) {
+        if (value.contains("male") || value.contains("男") || value.contains("前列腺") || value.contains("男科")) {
             return "male_only";
         }
         return "all";
     }
 
     public String normalizeText(String text) {
-        return text == null ? "" : text.toLowerCase(Locale.ROOT).trim();
+        if (text == null) {
+            return "";
+        }
+        return text.toLowerCase(Locale.ROOT)
+                .replace('\u3000', ' ')
+                .replace('\r', ' ')
+                .replace('\n', ' ')
+                .replace('（', '(')
+                .replace('）', ')')
+                .replace('【', '[')
+                .replace('】', ']')
+                .trim();
+    }
+
+    private List<String> splitTokens(String text, int maxLength) {
+        String normalized = normalizeText(text)
+                .replace('；', ',')
+                .replace(';', ',')
+                .replace('、', ',')
+                .replace('|', ',')
+                .replace('，', ',')
+                .replace('/', ',')
+                .replace('\\', ',')
+                .replace('：', ',')
+                .replace(':', ',');
+        String[] rawTokens = normalized.split("[,\\s]+");
+        Set<String> values = new LinkedHashSet<>();
+        for (String rawToken : rawTokens) {
+            String token = cleanListToken(rawToken);
+            if (!StringUtils.hasText(token)) {
+                continue;
+            }
+            if (token.length() > maxLength) {
+                continue;
+            }
+            values.add(token);
+        }
+        return new ArrayList<>(values);
+    }
+
+    private String cleanListToken(String value) {
+        if (!StringUtils.hasText(value)) {
+            return "";
+        }
+        String token = normalizeText(value)
+                .replace("\"", "")
+                .replace("'", "")
+                .replace("[", "")
+                .replace("]", "")
+                .replace("(", "")
+                .replace(")", "")
+                .replace("{", "")
+                .replace("}", "")
+                .trim();
+        return token;
     }
 }

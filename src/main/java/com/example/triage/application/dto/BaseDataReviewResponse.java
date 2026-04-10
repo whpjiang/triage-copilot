@@ -44,6 +44,8 @@ public class BaseDataReviewResponse {
         private String rawContent;
         private String suggestion;
         private Boolean resolved;
+        private List<String> matchedCapabilityCodes = new ArrayList<>();
+        private String reviewEvidence;
 
         public Long getId() {
             return id;
@@ -107,6 +109,22 @@ public class BaseDataReviewResponse {
 
         public void setResolved(Boolean resolved) {
             this.resolved = resolved;
+        }
+
+        public List<String> getMatchedCapabilityCodes() {
+            return matchedCapabilityCodes;
+        }
+
+        public void setMatchedCapabilityCodes(List<String> matchedCapabilityCodes) {
+            this.matchedCapabilityCodes = matchedCapabilityCodes;
+        }
+
+        public String getReviewEvidence() {
+            return reviewEvidence;
+        }
+
+        public void setReviewEvidence(String reviewEvidence) {
+            this.reviewEvidence = reviewEvidence;
         }
     }
 }

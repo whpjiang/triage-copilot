@@ -20,10 +20,10 @@ public class DiseaseCapabilityHintService {
         }
         List<String> capabilityCodes = capabilityAliasDictionaryService.mapHintToCapabilityCodes(standardDeptHint);
         if (capabilityCodes.isEmpty()) {
-            return new HintMappingResult(List.of(), "UNMAPPED_STANDARD_DEPT_HINT");
+            return new HintMappingResult(List.of(), "DISEASE_CAPABILITY_UNMAPPED");
         }
         if (capabilityCodes.size() > 1) {
-            return new HintMappingResult(capabilityCodes, "AMBIGUOUS_STANDARD_DEPT_HINT");
+            return new HintMappingResult(capabilityCodes, "DISEASE_CAPABILITY_MULTI_MATCH");
         }
         return new HintMappingResult(capabilityCodes, null);
     }

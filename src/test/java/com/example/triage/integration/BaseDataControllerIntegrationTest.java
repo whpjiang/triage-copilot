@@ -3,6 +3,8 @@ package com.example.triage.integration;
 import com.example.triagecopilot.TriageCopilotApplication;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -11,6 +13,8 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.io.ByteArrayOutputStream;
 
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
@@ -31,12 +35,13 @@ class BaseDataControllerIntegrationTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
-    void shouldImportWuhanDiseaseWithChineseHeaders() throws Exception {
-        String csv = """
-                疾病名称,别名,症状关键词,适用性别,年龄范围,紧急程度,建议科室
-                女性下腹痛,盆腔炎|盆腔感染,下腹痛|白带异常|发热,女,14-60岁,medium,妇科
-                """;
-        MockMultipartFile file = new MockMultipartFile("file", "wuhan-disease.csv", "text/csv", csv.getBytes());
+    void shouldImportWuhanDiseaseWorkbookSheetAndAutoMapHint() throws Exception {
+        MockMultipartFile file = workbookFile("wuhan-disease.xlsx", workbook -> {
+            createSheet(workbook, "README", new String[]{"说明"}, new String[]{"placeholder"});
+            createSheet(workbook, "Import_Disease",
+                    new String[]{"rt_disease_id", "disease_name", "disease_code", "aliases", "symptom_keywords", "gender_rule", "age_min", "age_max", "age_group", "urgency_level", "standard_dept_hint"},
+                    new String[]{"1", "女性下腹痛", "female_lower_abdominal_pain", "盆腔炎/下腹痛", "下腹痛,白带异常,发热", "female", "14", "60", "adult", "medium", "妇科"});
+        });
 
         mockMvc.perform(multipart("/api/base-data/import")
                         .file(file)
@@ -46,59 +51,71 @@ class BaseDataControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.successCount").value(1))
                 .andExpect(jsonPath("$.data.failureCount").value(0))
                 .andExpect(jsonPath("$.data.reviewCount").value(0));
-    }
-
-    @Test
-    void shouldExposeWuhanTemplateAndCreatePendingReviewForUnmappedDepartment() throws Exception {
-        String csv = """
-                医院名称,科室名称,所属城市,父级科室,科室简介,诊疗范围
-                武汉样例医院,综合评估门诊,武汉,内科,需要人工识别的结构化导入,复杂慢病管理
-                """;
-        MockMultipartFile file = new MockMultipartFile("file", "wuhan-department.csv", "text/csv", csv.getBytes());
-
-        mockMvc.perform(multipart("/api/base-data/import")
-                        .file(file)
-                        .param("datasetType", "wuhan_department")
-                        .contentType(MediaType.MULTIPART_FORM_DATA))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.reviewCount").value(1))
-                .andExpect(jsonPath("$.data.reviewTypeDistribution.WAIT_CAPABILITY_MAPPING").value(1));
-
-        mockMvc.perform(get("/api/base-data/template").param("datasetType", "wuhan_department"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.datasetType").value("wuhan_department"))
-                .andExpect(jsonPath("$.data.requiredFields[0]").value("医院名称"))
-                .andExpect(jsonPath("$.data.csvTemplate").isString());
-
-        mockMvc.perform(get("/api/base-data/reviews")
-                        .param("datasetType", "department")
-                        .param("limit", "5"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.pendingCount").isNumber())
-                .andExpect(jsonPath("$.data.issueTypeDistribution.WAIT_CAPABILITY_MAPPING").isNumber())
-                .andExpect(jsonPath("$.data.items[0].issueType").value("WAIT_CAPABILITY_MAPPING"));
-    }
-
-    @Test
-    void shouldAutoMapWuhanDepartmentImportAndExposeStats() throws Exception {
-        String csv = """
-                医院名称,科室名称,所属城市,父级科室,科室简介,诊疗范围
-                武汉样例医院,妇科门诊,武汉,妇产科,女性专科门诊,女性下腹痛|盆腔炎
-                """;
-        MockMultipartFile file = new MockMultipartFile("file", "wuhan-auto-map.csv", "text/csv", csv.getBytes());
-
-        mockMvc.perform(multipart("/api/base-data/import")
-                        .file(file)
-                        .param("datasetType", "wuhan_department")
-                        .contentType(MediaType.MULTIPART_FORM_DATA))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.successCount").value(1))
-                .andExpect(jsonPath("$.data.autoMappedCount").value(1))
-                .andExpect(jsonPath("$.data.reviewCount").value(0));
 
         mockMvc.perform(get("/api/base-data/check"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.relationCount").isNumber());
+                .andExpect(jsonPath("$.data.diseaseCapabilityMappedCount").isNumber());
+    }
+
+    @Test
+    void shouldCreateDiseaseCapabilityReviewsForMissingAndAmbiguousHints() throws Exception {
+        String csv = """
+                disease_name,disease_code,aliases,symptom_keywords,gender_rule,age_min,age_max,standard_dept_hint
+                疾病A,disease_a,别名A,发热,all,0,17,
+                疾病B,disease_b,别名B,腰痛,all,18,80,骨科/脊柱外科
+                """;
+        MockMultipartFile file = new MockMultipartFile("file", "disease.csv", "text/csv", csv.getBytes());
+
+        mockMvc.perform(multipart("/api/base-data/import")
+                        .file(file)
+                        .param("datasetType", "wuhan_disease")
+                        .contentType(MediaType.MULTIPART_FORM_DATA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.reviewTypeDistribution.MISSING_STANDARD_DEPT_HINT").value(1))
+                .andExpect(jsonPath("$.data.reviewTypeDistribution.DISEASE_CAPABILITY_MULTI_MATCH").value(1));
+    }
+
+    @Test
+    void shouldImportWuhanDepartmentWorkbookSheetAndExposeReviewEvidence() throws Exception {
+        MockMultipartFile file = workbookFile("wuhan-department.xlsx", workbook -> {
+            createSheet(workbook, "README", new String[]{"说明"}, new String[]{"placeholder"});
+            createSheet(workbook, "Summary", new String[]{"说明"}, new String[]{"placeholder"});
+            createSheet(workbook, "Import_Department",
+                    new String[]{"rt_hospital_id", "hospital_name", "city", "rt_dept_id", "department_name", "parent_department_name", "department_intro", "service_scope", "gender_rule", "age_min", "age_max", "crowd_tags"},
+                    new String[]{"10008", "武汉大学人民医院", "武汉", "20001", "脊柱疼痛门诊", "骨科", "聚焦脊柱退变", "腰腿痛,腰椎间盘突出", "", "", "", ""},
+                    new String[]{"10009", "医院_10009", "武汉", "20002", "综合评估门诊", "内科", "疑似待确认医院", "慢病管理", "", "", "", ""});
+        });
+
+        String importResponse = mockMvc.perform(multipart("/api/base-data/import")
+                        .file(file)
+                        .param("datasetType", "wuhan_department")
+                        .contentType(MediaType.MULTIPART_FORM_DATA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.successCount").value(2))
+                .andExpect(jsonPath("$.data.autoMappedCount").value(3))
+                .andExpect(jsonPath("$.data.reviewTypeDistribution.AUTO_MAPPING_NEEDS_REVIEW").value(1))
+                .andExpect(jsonPath("$.data.reviewTypeDistribution.HOSPITAL_NAME_NEEDS_CONFIRM").value(1))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        long jobId = objectMapper.readTree(importResponse).path("data").path("jobId").asLong();
+
+        mockMvc.perform(get("/api/base-data/reviews")
+                        .param("jobId", String.valueOf(jobId))
+                        .param("limit", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[0].issueType").isString())
+                .andExpect(jsonPath("$.data.items[*].matchedCapabilityCodes").isArray())
+                .andExpect(jsonPath("$.data.items[*].reviewEvidence").exists());
+
+        mockMvc.perform(get("/api/base-data/jobs/detail")
+                        .param("jobId", String.valueOf(jobId))
+                        .param("failureLimit", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.job.autoMappedCount").value(3))
+                .andExpect(jsonPath("$.data.reviewTypeDistribution.HOSPITAL_NAME_NEEDS_CONFIRM").value(1))
+                .andExpect(jsonPath("$.data.recentReviews[0].reviewId").isNumber());
     }
 
     @Test
@@ -116,8 +133,7 @@ class BaseDataControllerIntegrationTest {
                 .andExpect(status().isOk());
 
         String reviewResponse = mockMvc.perform(get("/api/base-data/reviews")
-                        .param("datasetType", "department")
-                        .param("limit", "1"))
+                        .param("limit", "10"))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
@@ -137,48 +153,36 @@ class BaseDataControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.pendingCount").isNumber());
 
         mockMvc.perform(get("/api/base-data/reviews")
-                        .param("datasetType", "department")
                         .param("limit", "20"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items[*].id", not(hasItem((int) reviewId))));
     }
 
-    @Test
-    void shouldExposeImportJobListAndFailureDetails() throws Exception {
-        String csv = """
-                疾病名称,别名,症状关键词,适用性别,年龄范围,紧急程度,建议科室
-                valid_disease,valid_alias,headache|dizziness,all,18-65岁,medium,neurology
-                ,missing_name,nausea,all,18-65岁,low,internal
-                """;
-        MockMultipartFile file = new MockMultipartFile("file", "job-detail.csv", "text/csv", csv.getBytes());
+    private MockMultipartFile workbookFile(String filename, WorkbookConsumer consumer) throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            consumer.accept(workbook);
+            workbook.write(outputStream);
+            return new MockMultipartFile("file", filename, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", outputStream.toByteArray());
+        }
+    }
 
-        String importResponse = mockMvc.perform(multipart("/api/base-data/import")
-                        .file(file)
-                        .param("datasetType", "wuhan_disease")
-                        .contentType(MediaType.MULTIPART_FORM_DATA))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.successCount").value(1))
-                .andExpect(jsonPath("$.data.failureCount").value(1))
-                .andExpect(jsonPath("$.data.commonIssueDistribution").isMap())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+    private void createSheet(XSSFWorkbook workbook, String name, String[] headers, String[]... rows) {
+        XSSFSheet sheet = workbook.createSheet(name);
+        var headerRow = sheet.createRow(0);
+        for (int i = 0; i < headers.length; i++) {
+            headerRow.createCell(i).setCellValue(headers[i]);
+        }
+        for (int rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+            var row = sheet.createRow(rowIndex + 1);
+            String[] values = rows[rowIndex];
+            for (int cellIndex = 0; cellIndex < values.length; cellIndex++) {
+                row.createCell(cellIndex).setCellValue(values[cellIndex]);
+            }
+        }
+    }
 
-        long jobId = objectMapper.readTree(importResponse).path("data").path("jobId").asLong();
-
-        mockMvc.perform(get("/api/base-data/jobs").param("limit", "5"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.jobs[0].jobId").isNumber())
-                .andExpect(jsonPath("$.data.jobs[0].autoMappedCount").isNumber());
-
-        mockMvc.perform(get("/api/base-data/jobs/detail")
-                        .param("jobId", String.valueOf(jobId))
-                        .param("failureLimit", "5"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.job.jobId").value(jobId))
-                .andExpect(jsonPath("$.data.job.failureCount").value(1))
-                .andExpect(jsonPath("$.data.commonIssueDistribution").isMap())
-                .andExpect(jsonPath("$.data.reviewTypeDistribution.MISSING_DISEASE_NAME").value(1))
-                .andExpect(jsonPath("$.data.failures[0].rowNumber").isNumber());
+    @FunctionalInterface
+    private interface WorkbookConsumer {
+        void accept(XSSFWorkbook workbook) throws Exception;
     }
 }

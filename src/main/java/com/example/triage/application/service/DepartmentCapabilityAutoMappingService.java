@@ -1,7 +1,6 @@
 package com.example.triage.application.service;
 
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -31,9 +30,9 @@ public class DepartmentCapabilityAutoMappingService {
                 capabilityAliasDictionaryService.matchAll(serviceScope, intro);
 
         Map<String, CapabilityMappingSuggestion> merged = new LinkedHashMap<>();
-        mergeRules(merged, directMatches);
-        mergeRules(merged, parentMatches);
-        mergeRules(merged, scopeMatches);
+        mergeRules(merged, directMatches, "department_name");
+        mergeRules(merged, parentMatches, "parent_department_name");
+        mergeRules(merged, scopeMatches, "service_scope");
 
         List<String> reviewIssues = new ArrayList<>();
         if (merged.isEmpty()) {
@@ -53,15 +52,25 @@ public class DepartmentCapabilityAutoMappingService {
     }
 
     private void mergeRules(Map<String, CapabilityMappingSuggestion> merged,
-                            List<CapabilityAliasDictionaryService.CapabilityAliasRule> rules) {
+                            List<CapabilityAliasDictionaryService.CapabilityAliasRule> rules,
+                            String evidenceSource) {
         for (CapabilityAliasDictionaryService.CapabilityAliasRule rule : rules) {
             merged.compute(rule.capabilityCode(), (key, existing) -> {
+                Set<String> evidences = new LinkedHashSet<>();
+                evidences.add(evidenceSource + ":" + rule.alias());
                 CapabilityMappingSuggestion candidate =
-                        new CapabilityMappingSuggestion(rule.capabilityCode(), rule.supportLevel(), rule.weight());
+                        new CapabilityMappingSuggestion(rule.capabilityCode(), rule.supportLevel(), rule.weight(), new ArrayList<>(evidences));
                 if (existing == null) {
                     return candidate;
                 }
-                return existing.weight() >= candidate.weight() ? existing : candidate;
+                Set<String> mergedEvidence = new LinkedHashSet<>(existing.evidence());
+                mergedEvidence.addAll(candidate.evidence());
+                return new CapabilityMappingSuggestion(
+                        existing.capabilityCode(),
+                        existing.weight() >= candidate.weight() ? existing.supportLevel() : candidate.supportLevel(),
+                        Math.max(existing.weight(), candidate.weight()),
+                        new ArrayList<>(mergedEvidence)
+                );
             });
         }
     }
@@ -73,11 +82,16 @@ public class DepartmentCapabilityAutoMappingService {
         }
         Set<String> leftCodes = new LinkedHashSet<>();
         left.forEach(item -> leftCodes.add(item.capabilityCode()));
-        boolean overlap = right.stream().map(CapabilityAliasDictionaryService.CapabilityAliasRule::capabilityCode).anyMatch(leftCodes::contains);
+        boolean overlap = right.stream()
+                .map(CapabilityAliasDictionaryService.CapabilityAliasRule::capabilityCode)
+                .anyMatch(leftCodes::contains);
         return !overlap;
     }
 
-    public record CapabilityMappingSuggestion(String capabilityCode, String supportLevel, double weight) {
+    public record CapabilityMappingSuggestion(String capabilityCode,
+                                              String supportLevel,
+                                              double weight,
+                                              List<String> evidence) {
     }
 
     public record MappingEvaluation(List<CapabilityMappingSuggestion> suggestions, List<String> reviewIssues) {
@@ -89,17 +103,29 @@ public class DepartmentCapabilityAutoMappingService {
             return !reviewIssues.isEmpty();
         }
 
+        public List<String> matchedCapabilityCodes() {
+            return suggestions.stream().map(CapabilityMappingSuggestion::capabilityCode).toList();
+        }
+
+        public List<String> evidenceSummary() {
+            return suggestions.stream()
+                    .flatMap(item -> item.evidence().stream())
+                    .distinct()
+                    .toList();
+        }
+
         public String reviewSuggestion() {
+            String details = "matched=" + matchedCapabilityCodes() + "; evidence=" + evidenceSummary();
             if (reviewIssues.contains("PARENT_DEPARTMENT_CONFLICT")) {
-                return "父级科室与当前科室推断能力冲突，请人工确认";
+                return "父级科室与当前科室推断能力冲突，请人工确认; " + details;
             }
             if (reviewIssues.contains("SERVICE_SCOPE_CONFLICT")) {
-                return "科室名称与诊疗范围推断能力冲突，请人工确认";
+                return "科室名称与诊疗范围推断能力冲突，请人工确认; " + details;
             }
             if (reviewIssues.contains("AUTO_MAPPING_NEEDS_REVIEW")) {
-                return "自动映射到多个医学能力，请人工复核";
+                return "自动映射到多个医学能力，请人工复核; " + details;
             }
-            return "请为本地科室补充或确认医学能力映射";
+            return "请为本地科室补充或确认医学能力映射; " + details;
         }
     }
 }

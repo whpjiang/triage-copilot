@@ -12,6 +12,7 @@ public class BaseDataJobDetailResponse {
     private Map<String, Integer> reviewTypeDistribution = new LinkedHashMap<>();
     private Map<String, Integer> commonIssueDistribution = new LinkedHashMap<>();
     private List<FailureLogDto> failures = new ArrayList<>();
+    private List<ReviewLogDto> recentReviews = new ArrayList<>();
 
     public JobDto getJob() {
         return job;
@@ -51,6 +52,14 @@ public class BaseDataJobDetailResponse {
 
     public void setFailures(List<FailureLogDto> failures) {
         this.failures = failures;
+    }
+
+    public List<ReviewLogDto> getRecentReviews() {
+        return recentReviews;
+    }
+
+    public void setRecentReviews(List<ReviewLogDto> recentReviews) {
+        this.recentReviews = recentReviews;
     }
 
     public static class JobDto {
@@ -173,6 +182,63 @@ public class BaseDataJobDetailResponse {
 
         public void setErrorMessage(String errorMessage) {
             this.errorMessage = errorMessage;
+        }
+    }
+
+    public static class ReviewLogDto {
+        private Long reviewId;
+        private String datasetType;
+        private String itemKey;
+        private String issueType;
+        private String suggestion;
+        private Boolean resolved;
+
+        public Long getReviewId() {
+            return reviewId;
+        }
+
+        public void setReviewId(Long reviewId) {
+            this.reviewId = reviewId;
+        }
+
+        public String getDatasetType() {
+            return datasetType;
+        }
+
+        public void setDatasetType(String datasetType) {
+            this.datasetType = datasetType;
+        }
+
+        public String getItemKey() {
+            return itemKey;
+        }
+
+        public void setItemKey(String itemKey) {
+            this.itemKey = itemKey;
+        }
+
+        public String getIssueType() {
+            return issueType;
+        }
+
+        public void setIssueType(String issueType) {
+            this.issueType = issueType;
+        }
+
+        public String getSuggestion() {
+            return suggestion;
+        }
+
+        public void setSuggestion(String suggestion) {
+            this.suggestion = suggestion;
+        }
+
+        public Boolean getResolved() {
+            return resolved;
+        }
+
+        public void setResolved(Boolean resolved) {
+            this.resolved = resolved;
         }
     }
 }

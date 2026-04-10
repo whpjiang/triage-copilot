@@ -60,6 +60,16 @@ public class BaseDataJobService {
             dto.setErrorMessage(item.errorMessage());
             return dto;
         }).toList());
+        response.setRecentReviews(baseDataAdminRepository.findRecentReviewsByJobId(jobId, failureLimit).stream().map(item -> {
+            BaseDataJobDetailResponse.ReviewLogDto dto = new BaseDataJobDetailResponse.ReviewLogDto();
+            dto.setReviewId(item.id());
+            dto.setDatasetType(item.datasetType());
+            dto.setItemKey(item.itemKey());
+            dto.setIssueType(item.issueType());
+            dto.setSuggestion(item.suggestion());
+            dto.setResolved(item.resolved());
+            return dto;
+        }).toList());
         return response;
     }
 }

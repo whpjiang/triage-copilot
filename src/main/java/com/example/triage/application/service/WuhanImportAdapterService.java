@@ -22,10 +22,11 @@ public class WuhanImportAdapterService {
     private Map<String, String> adaptDepartment(Map<String, String> source) {
         Map<String, String> row = new LinkedHashMap<>();
         row.put("hospital_name", first(source,
-                "hospital_name", "医院名称", "医院", "医疗机构名称", "hospital_name_raw", "hospital_name_norm", "name_raw", "name_norm"));
+                "hospital_name", "医院名称", "医院", "医疗机构名称", "hospital_name_raw", "hospital_name_norm", "name_raw", "name_norm", "hospital_name_candidate"));
         row.put("department_name", first(source,
-                "department_name", "科室名称", "科室", "门诊名称", "service_unit_name", "name_raw", "name_norm"));
-        row.put("city", first(source, "city", "所属城市", "城市", "地区"));
+                "department_name", "科室名称", "科室", "门诊名称", "service_unit_name", "dept_name", "name_raw", "name_norm"));
+        row.put("city", first(source,
+                "city", "所属城市", "城市", "地区"));
         row.put("parent_department_name", first(source,
                 "parent_department_name", "父级科室", "上级科室", "一级科室", "parent_name", "dept_parent_name"));
         row.put("department_intro", first(source,
@@ -34,10 +35,14 @@ public class WuhanImportAdapterService {
                 "service_scope", "诊疗范围", "服务范围", "擅长方向", "specialty_text", "诊疗项目"));
         row.put("gender_rule", first(source,
                 "gender_rule", "适用性别", "性别规则", "gender_limit", "gender"));
-        row.put("age_min", first(source, "age_min", "最小年龄", "年龄下限"));
-        row.put("age_max", first(source, "age_max", "最大年龄", "年龄上限"));
-        row.put("age_range", first(source, "age_range", "年龄范围", "适龄人群"));
-        row.put("crowd_tags", first(source, "crowd_tags", "人群标签", "crowd_limit"));
+        row.put("age_min", first(source,
+                "age_min", "最小年龄", "年龄下限"));
+        row.put("age_max", first(source,
+                "age_max", "最大年龄", "年龄上限"));
+        row.put("age_range", first(source,
+                "age_range", "年龄范围", "适龄人群"));
+        row.put("crowd_tags", first(source,
+                "crowd_tags", "人群标签", "crowd_limit"));
         if (!StringUtils.hasText(row.get("city"))) {
             row.put("city", "武汉");
         }
@@ -56,11 +61,16 @@ public class WuhanImportAdapterService {
                 "symptom_keywords", "症状关键词", "关键词", "常见症状", "症状", "主诉关键词"));
         row.put("gender_rule", first(source,
                 "gender_rule", "性别规则", "适用性别", "性别", "gender_limit"));
-        row.put("age_min", first(source, "age_min", "最小年龄", "年龄下限"));
-        row.put("age_max", first(source, "age_max", "最大年龄", "年龄上限"));
-        row.put("age_range", first(source, "age_range", "年龄范围", "适龄人群"));
-        row.put("age_group", first(source, "age_group", "年龄分层", "年龄段"));
-        row.put("urgency_level", first(source, "urgency_level", "紧急程度", "风险等级"));
+        row.put("age_min", first(source,
+                "age_min", "最小年龄", "年龄下限"));
+        row.put("age_max", first(source,
+                "age_max", "最大年龄", "年龄上限"));
+        row.put("age_range", first(source,
+                "age_range", "年龄范围", "适龄人群"));
+        row.put("age_group", first(source,
+                "age_group", "年龄分层", "年龄段"));
+        row.put("urgency_level", first(source,
+                "urgency_level", "紧急程度", "风险等级"));
         row.put("standard_dept_hint", first(source,
                 "standard_dept_hint", "标准科室", "医学能力线索", "建议科室", "推荐科室"));
         return row;

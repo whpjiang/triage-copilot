@@ -208,12 +208,16 @@ public class BaseDataAdminRepository {
     }
 
     public Map<String, Integer> aggregateCounts() {
-        Integer diseases = jdbcTemplate.queryForObject("select count(1) from disease_master where deleted = 0", Integer.class);
-        Integer pending = jdbcTemplate.queryForObject("select count(1) from import_review_item where resolved = 0", Integer.class);
-        return Map.of(
-                "diseases", diseases == null ? 0 : diseases,
-                "pending", pending == null ? 0 : pending
-        );
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        counts.put("diseases", queryCount("select count(1) from disease_master where deleted = 0"));
+        counts.put("disease_aliases", queryCount("select count(1) from disease_alias"));
+        counts.put("diseases_with_symptoms", queryCount("select count(1) from disease_master where deleted = 0 and symptom_keywords is not null and symptom_keywords <> '[]' and symptom_keywords <> ''"));
+        counts.put("disease_capability_mapped", queryCount("select count(distinct disease_code) from disease_capability_rel"));
+        counts.put("pending", queryCount("select count(1) from import_review_item where resolved = 0"));
+        counts.put("pending_department", queryCount("select count(1) from import_review_item where resolved = 0 and dataset_type = 'department'"));
+        counts.put("pending_disease", queryCount("select count(1) from import_review_item where resolved = 0 and dataset_type = 'disease'"));
+        counts.put("auto_mapped_departments", queryCount("select count(distinct department_id) from department_capability_rel where source like '%auto%'"));
+        return counts;
     }
 
     public int countPendingReviews(String datasetType, Long jobId) {
@@ -352,6 +356,25 @@ public class BaseDataAdminRepository {
         ), jobId, limit);
     }
 
+    public List<ImportReviewItemRecord> findRecentReviewsByJobId(Long jobId, int limit) {
+        return jdbcTemplate.query("""
+                select id, job_id, dataset_type, item_key, issue_type, raw_content, suggestion, resolved
+                from import_review_item
+                where job_id = ?
+                order by id desc
+                limit ?
+                """, (rs, rowNum) -> new ImportReviewItemRecord(
+                rs.getLong("id"),
+                rs.getLong("job_id"),
+                rs.getString("dataset_type"),
+                rs.getString("item_key"),
+                rs.getString("issue_type"),
+                rs.getString("raw_content"),
+                rs.getString("suggestion"),
+                rs.getBoolean("resolved")
+        ), jobId, limit);
+    }
+
     private void appendReviewFilters(StringBuilder sql, List<Object> args, String datasetType, Long jobId) {
         if (datasetType != null && !datasetType.isBlank()) {
             sql.append(" and dataset_type = ?");
@@ -373,5 +396,10 @@ public class BaseDataAdminRepository {
         }
         Number fallback = keyHolder.getKey();
         return fallback == null ? 0L : fallback.longValue();
+    }
+
+    private int queryCount(String sql) {
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class);
+        return count == null ? 0 : count;
     }
 }

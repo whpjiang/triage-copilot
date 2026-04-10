@@ -161,9 +161,10 @@ public class AiDiseaseRecallClient {
                 "剧烈胸痛", "持续胸闷", "窒息感", "呼吸急促", "呼吸困难",
                 "昏厥", "昏迷", "抽搐", "偏瘫", "言语不清",
                 "呕血", "黑便", "大出血", "剧烈腹痛",
-                "高热不退", "精神差", "嗜睡", "喂养困难",
+                "高热不退", "精神差", "嗜睡", "喂养困难", "拒食",
                 "孕妇腹痛", "阴道流血", "胎动异常",
-                "突发头痛", "一侧肢体无力", "视物不清", "意识障碍",
+                "突发头痛", "一侧肢体无力", "视物不清", "视物模糊", "意识障碍", "口角歪斜", "一侧无力",
+                "血便", "严重腹痛",
                 "chest pain", "shortness of breath", "syncope", "convulsion",
                 "major bleeding", "hematemesis", "melena", "severe abdominal pain",
                 "severe headache", "blurred vision", "altered mental status");

@@ -31,7 +31,7 @@ public class DiseaseCandidateService {
     }
 
     public List<DiseaseCandidate> identifyCandidates(String symptoms, PopulationProfile profile) {
-        String normalizedSymptoms = symptoms == null ? "" : symptoms.toLowerCase(Locale.ROOT);
+        String normalizedSymptoms = diseaseNormalizeService.normalizeText(symptoms);
         List<DiseaseCandidate> candidates = new ArrayList<>();
         List<DiseaseRecord> eligibleDiseases = diseaseDataRepository.findApprovedDiseases().stream()
                 .filter(disease -> diseaseNormalizeService.matchesGenderAndAge(
@@ -54,7 +54,7 @@ public class DiseaseCandidateService {
                     matched.add(alias);
                 }
             }
-            for (String keyword : diseaseNormalizeService.parseList(disease.symptomKeywords())) {
+            for (String keyword : diseaseNormalizeService.normalizeKeywords(disease.symptomKeywords())) {
                 if (StringUtils.hasText(keyword) && normalizedSymptoms.contains(keyword)) {
                     score += 1.2;
                     matched.add(keyword);

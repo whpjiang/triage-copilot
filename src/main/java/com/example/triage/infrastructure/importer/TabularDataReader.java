@@ -19,9 +19,13 @@ import java.util.Map;
 public class TabularDataReader {
 
     public List<Map<String, String>> read(MultipartFile file) throws Exception {
+        return read(file, null);
+    }
+
+    public List<Map<String, String>> read(MultipartFile file, String sheetName) throws Exception {
         String filename = file.getOriginalFilename() == null ? "" : file.getOriginalFilename().toLowerCase();
         if (filename.endsWith(".xlsx")) {
-            return readExcel(file);
+            return readExcel(file, sheetName);
         }
         return readCsv(file);
     }
@@ -38,9 +42,14 @@ public class TabularDataReader {
         }
     }
 
-    private List<Map<String, String>> readExcel(MultipartFile file) throws Exception {
+    private List<Map<String, String>> readExcel(MultipartFile file, String sheetName) throws Exception {
         try (XSSFWorkbook workbook = new XSSFWorkbook(file.getInputStream())) {
-            var sheet = workbook.getSheetAt(0);
+            var sheet = sheetName == null || sheetName.isBlank()
+                    ? workbook.getSheetAt(0)
+                    : workbook.getSheet(sheetName);
+            if (sheet == null) {
+                sheet = workbook.getSheetAt(0);
+            }
             Iterator<org.apache.poi.ss.usermodel.Row> iterator = sheet.iterator();
             if (!iterator.hasNext()) {
                 return List.of();
