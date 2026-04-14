@@ -22,7 +22,6 @@ import com.example.triagecopilot.tools.TriageTools;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
@@ -37,7 +36,6 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-@Service
 public class TriageAgentServiceImpl implements TriageAgentService {
 
     private static final int CHILD_AGE = 18;

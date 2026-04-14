@@ -1,10 +1,10 @@
 package com.example.triagecopilot.service.impl;
 
+import com.example.triage.application.dto.TriageAssessRequest;
+import com.example.triage.application.dto.TriageAssessResponse;
+import com.example.triage.application.orchestrator.TriageDecisionOrchestrator;
 import com.example.triagecopilot.dto.ChatRequest;
-import com.example.triagecopilot.dto.TriageAnalyzeRequest;
-import com.example.triagecopilot.dto.TriageAnalyzeResponse;
 import com.example.triagecopilot.service.ChatService;
-import com.example.triagecopilot.service.TriageAgentService;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -19,10 +19,10 @@ public class ChatServiceImpl implements ChatService {
     private static final Pattern GENDER_MALE_PATTERN = Pattern.compile("\\b(male|man|boy)\\b", Pattern.CASE_INSENSITIVE);
     private static final Pattern GENDER_FEMALE_PATTERN = Pattern.compile("\\b(female|woman|girl)\\b", Pattern.CASE_INSENSITIVE);
 
-    private final TriageAgentService triageAgentService;
+    private final TriageDecisionOrchestrator triageDecisionOrchestrator;
 
-    public ChatServiceImpl(TriageAgentService triageAgentService) {
-        this.triageAgentService = triageAgentService;
+    public ChatServiceImpl(TriageDecisionOrchestrator triageDecisionOrchestrator) {
+        this.triageDecisionOrchestrator = triageDecisionOrchestrator;
     }
 
     @Override
@@ -45,24 +45,42 @@ public class ChatServiceImpl implements ChatService {
             return "Please provide gender: male or female.";
         }
 
-        TriageAnalyzeRequest analyzeRequest = new TriageAnalyzeRequest();
-        analyzeRequest.setSymptoms(message);
-        analyzeRequest.setAge(age);
-        analyzeRequest.setGender(gender);
-        TriageAnalyzeResponse result = triageAgentService.analyze(analyzeRequest);
+        TriageAssessRequest assessRequest = new TriageAssessRequest();
+        assessRequest.setSymptoms(message);
+        assessRequest.setAge(age);
+        assessRequest.setGender(gender);
+        TriageAssessResponse result = triageDecisionOrchestrator.assess(assessRequest);
+
+        String recommendedDepartment = result.getCapabilityRecommendations().isEmpty()
+                ? "-"
+                : nvl(result.getCapabilityRecommendations().get(0).getCapabilityName());
+        String recommendedClinic = result.getDepartmentRecommendations().isEmpty()
+                ? "-"
+                : nvl(result.getDepartmentRecommendations().get(0).getDepartmentName());
+        String urgency = result.getCandidateDiseases().isEmpty()
+                ? "MEDIUM"
+                : nvl(result.getCandidateDiseases().get(0).getUrgencyLevel()).toUpperCase();
+        String reason = result.getCandidateDiseases().isEmpty()
+                ? "Structured triage evaluation completed."
+                : "Top candidate disease: " + nvl(result.getCandidateDiseases().get(0).getDiseaseName());
+        String doctor = result.getDoctorRecommendations().isEmpty()
+                ? "-"
+                : nvl(result.getDoctorRecommendations().get(0).getDoctorName());
 
         return """
                 Recommended Department: %s
                 Recommended Clinic: %s
+                Recommended Doctor: %s
                 Urgency: %s
                 Reason: %s
                 Advice: %s
                 """.formatted(
-                nvl(result.getRecommendedDepartment()),
-                nvl(result.getRecommendedFunctionalClinic()),
-                nvl(result.getUrgencyLevel()),
-                nvl(result.getUrgencyReason()),
-                nvl(result.getAdvice())
+                recommendedDepartment,
+                recommendedClinic,
+                doctor,
+                urgency,
+                reason,
+                nvl(result.getExplanation())
         );
     }
 

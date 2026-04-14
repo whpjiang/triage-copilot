@@ -7,10 +7,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.triagecopilot.entity.DictStandardDept;
 import com.example.triagecopilot.mapper.DictStandardDeptMapper;
 import com.example.triagecopilot.service.DictStandardDeptService;
-import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-@Service
 public class DictStandardDeptServiceImpl extends ServiceImpl<DictStandardDeptMapper, DictStandardDept> implements DictStandardDeptService {
 
     @Override

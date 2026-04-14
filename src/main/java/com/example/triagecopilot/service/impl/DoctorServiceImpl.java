@@ -7,10 +7,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.triagecopilot.entity.Doctor;
 import com.example.triagecopilot.mapper.DoctorMapper;
 import com.example.triagecopilot.service.DoctorService;
-import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-@Service
 public class DoctorServiceImpl extends ServiceImpl<DoctorMapper, Doctor> implements DoctorService {
 
     @Override

@@ -17,18 +17,18 @@
 
 仓库不包含真实数据库密码或 API Key。运行前请设置以下环境变量：
 
-- `DB_URL`
-- `DB_USERNAME`
-- `DB_PASSWORD`
-- `DASHSCOPE_API_KEY`
+- `NACOS_SERVER_ADDR`
+- `NACOS_USERNAME`
+- `NACOS_PASSWORD`
+- `NACOS_NAMESPACE`
+- `NACOS_GROUP`
 
 示例：
 
 ```powershell
-$env:DB_URL="jdbc:mysql://127.0.0.1:3306/triage_copilot?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai"
-$env:DB_USERNAME="root"
-$env:DB_PASSWORD="your-password"
-$env:DASHSCOPE_API_KEY="your-api-key"
+$env:NACOS_SERVER_ADDR="nas.whpjiang.cn:8848"
+$env:NACOS_USERNAME="nacos"
+$env:NACOS_PASSWORD="nacos"
 mvn spring-boot:run
 ```
 
@@ -132,3 +132,29 @@ AI 疾病补召回只做辅助，不主导最终决策。
 - [docs/triage-decision-flow.md](docs/triage-decision-flow.md)
 - [docs/wuhan-data-import.md](docs/wuhan-data-import.md)
 - [docs/review-governance.md](docs/review-governance.md)
+
+## Spring Cloud Alibaba & Nacos
+
+The project now uses:
+
+- Spring Cloud `2025.0.0`
+- Spring Cloud Alibaba `2025.0.0.0`
+- Nacos server address `nas.whpjiang.cn:8848`
+
+Application bootstrap config stays in [src/main/resources/application.yml](src/main/resources/application.yml).
+Database connection properties have been moved to Nacos. Create a Nacos configuration with:
+
+- Data ID: `triage-copilot.yaml`
+- Group: `DEFAULT_GROUP`
+- Format: `YAML`
+
+You can publish the sample content from [docs/nacos/triage-copilot.yaml](docs/nacos/triage-copilot.yaml).
+Both database and DashScope model settings should now be maintained in that Nacos config.
+
+Optional local environment variables:
+
+- `NACOS_SERVER_ADDR`
+- `NACOS_USERNAME`
+- `NACOS_PASSWORD`
+- `NACOS_NAMESPACE`
+- `NACOS_GROUP`

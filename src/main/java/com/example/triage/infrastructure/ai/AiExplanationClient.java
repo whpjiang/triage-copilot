@@ -1,34 +1,24 @@
 package com.example.triage.infrastructure.ai;
 
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 @Component
 public class AiExplanationClient {
 
-    private final ObjectProvider<ChatModel> chatModelProvider;
+    private final DashScopeCompatibleClient dashScopeCompatibleClient;
 
-    public AiExplanationClient(ObjectProvider<ChatModel> chatModelProvider) {
-        this.chatModelProvider = chatModelProvider;
+    public AiExplanationClient(DashScopeCompatibleClient dashScopeCompatibleClient) {
+        this.dashScopeCompatibleClient = dashScopeCompatibleClient;
     }
 
     public String polishExplanation(String structuredFacts) {
-        ChatModel model = chatModelProvider.getIfAvailable();
-        if (model == null) {
+        String response = dashScopeCompatibleClient.chat(
+                "Rewrite the structured triage explanation into concise Chinese, but do not add or change any clinical facts.",
+                structuredFacts
+        );
+        if (response == null || response.isBlank()) {
             return structuredFacts;
         }
-        try {
-            String response = ChatClient.builder(model).build()
-                    .prompt()
-                    .system("Rewrite the structured triage explanation into concise Chinese, but do not add or change any clinical facts.")
-                    .user(structuredFacts)
-                    .call()
-                    .content();
-            return response == null || response.isBlank() ? structuredFacts : response;
-        } catch (Exception ex) {
-            return structuredFacts;
-        }
+        return response;
     }
 }

@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@MapperScan({"com.example.triagecopilot.mapper", "com.example.triage.infrastructure.persistence.mapper"})
+@MapperScan("com.example.triage.infrastructure.persistence.mapper")
 public class MybatisPlusConfig {
 
     @Bean

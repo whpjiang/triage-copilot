@@ -27,25 +27,25 @@ public class TriageExplanationService {
                           List<DepartmentRecommendation> departments,
                           List<DoctorRecommendation> doctors) {
         String structured = """
-                已按结构化链路完成初步分诊：
-                - 人群画像：性别=%s，年龄=%s，年龄段=%s，标签=%s
-                - 场景路径：%s
-                - 疾病候选：%s
-                - 医学能力：%s
-                - 本地科室：%s
-                - 医生推荐：%s
-                以上结果先经过年龄、性别、特殊人群和路径标签约束，再将标准医学能力映射到本地真实科室。
-                如出现进行性加重、高热不退、意识异常或剧烈疼痛，应及时线下急诊就医。
+                Structured triage completed:
+                - Population profile: gender=%s, age=%s, ageGroup=%s, tags=%s
+                - Pathway tags: %s
+                - Candidate diseases: %s
+                - Capability recommendations: %s
+                - Department recommendations: %s
+                - Doctor recommendations: %s
+                The result is constrained by age, gender, special population tags, and pathway tags before mapping capabilities to local departments.
+                Seek urgent in-person care if symptoms become rapidly worse or severe pain, persistent high fever, or altered consciousness appears.
                 """.formatted(
                 profile.gender(),
                 profile.age(),
                 profile.ageGroup().name().toLowerCase(),
-                String.join("、", profile.crowdTags()),
-                pathwayTags.isEmpty() ? "general_pathway" : String.join("、", pathwayTags),
-                diseases.stream().map(d -> d.diseaseName() + "(" + round2(d.score()) + ")").collect(Collectors.joining("；")),
-                capabilities.stream().map(c -> c.capabilityName() + "(" + round2(c.score()) + ")").collect(Collectors.joining("；")),
-                departments.stream().map(d -> d.hospitalName() + "-" + d.departmentName()).collect(Collectors.joining("；")),
-                doctors.stream().map(d -> d.doctorName() + "-" + d.title()).collect(Collectors.joining("；"))
+                String.join(", ", profile.crowdTags()),
+                pathwayTags.isEmpty() ? "general_pathway" : String.join(", ", pathwayTags),
+                diseases.stream().map(d -> d.diseaseName() + "(" + round2(d.score()) + ")").collect(Collectors.joining("; ")),
+                capabilities.stream().map(c -> c.capabilityName() + "(" + round2(c.score()) + ")").collect(Collectors.joining("; ")),
+                departments.stream().map(d -> d.hospitalName() + "-" + d.departmentName()).collect(Collectors.joining("; ")),
+                doctors.stream().map(d -> d.doctorName() + "-" + d.title()).collect(Collectors.joining("; "))
         );
         return aiExplanationClient.polishExplanation(structured);
     }
