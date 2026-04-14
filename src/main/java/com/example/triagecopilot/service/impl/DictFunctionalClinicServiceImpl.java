@@ -7,10 +7,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.triagecopilot.entity.DictFunctionalClinic;
 import com.example.triagecopilot.mapper.DictFunctionalClinicMapper;
 import com.example.triagecopilot.service.DictFunctionalClinicService;
-import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-@Service
 public class DictFunctionalClinicServiceImpl extends ServiceImpl<DictFunctionalClinicMapper, DictFunctionalClinic> implements DictFunctionalClinicService {
 
     @Override

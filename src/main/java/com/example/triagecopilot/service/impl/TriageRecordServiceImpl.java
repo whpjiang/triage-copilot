@@ -7,10 +7,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.triagecopilot.entity.TriageRecord;
 import com.example.triagecopilot.mapper.TriageRecordMapper;
 import com.example.triagecopilot.service.TriageRecordService;
-import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-@Service
 public class TriageRecordServiceImpl extends ServiceImpl<TriageRecordMapper, TriageRecord> implements TriageRecordService {
 
     @Override

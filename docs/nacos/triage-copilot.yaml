@@ -1,0 +1,14 @@
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:3306/triage_copilot?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: your-password
+    hikari:
+      initialization-fail-timeout: -1
+  ai:
+    dashscope:
+      api-key: your-api-key
+      chat:
+        options:
+          model: qwen3.5-plus

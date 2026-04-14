@@ -6,19 +6,22 @@ spring:
     lazy-initialization: true
   application:
     name: triage-copilot
-  datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: ${DB_URL:jdbc:mysql://localhost:3306/triage_copilot?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:}
-    hikari:
-      initialization-fail-timeout: -1
-  ai:
-    dashscope:
-      api-key: ${DASHSCOPE_API_KEY:}
-      chat:
-        options:
-          model: qwen-max
+  config:
+    import:
+      - optional:nacos:${spring.application.name}.yaml?group=${NACOS_GROUP:DEFAULT_GROUP}&refreshEnabled=true
+  cloud:
+    nacos:
+      username: ${NACOS_USERNAME:nacos}
+      password: ${NACOS_PASSWORD:nacos}
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:nas.whpjiang.cn:8848}
+        namespace: ${NACOS_NAMESPACE:}
+        group: ${NACOS_GROUP:DEFAULT_GROUP}
+        file-extension: yaml
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:nas.whpjiang.cn:8848}
+        namespace: ${NACOS_NAMESPACE:}
+        group: ${NACOS_GROUP:DEFAULT_GROUP}
 
 mybatis-plus:
   configuration:

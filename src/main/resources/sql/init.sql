@@ -108,7 +108,7 @@ CREATE TABLE IF NOT EXISTS import_job_record (
 CREATE TABLE IF NOT EXISTS import_failure_log (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     job_id BIGINT NOT NULL,
-    row_number INT,
+    `row_number` INT,
     raw_content TEXT,
     error_message VARCHAR(500),
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -176,63 +176,66 @@ DELETE FROM hospital_department;
 DELETE FROM hospital;
 DELETE FROM doctor_capability_rel;
 DELETE FROM doctor_profile;
+DELETE FROM import_failure_log;
+DELETE FROM import_review_item;
+DELETE FROM import_job_record;
 
 INSERT INTO disease_master (disease_code, disease_name, aliases_json, symptom_keywords, gender_rule, age_min, age_max, age_group, urgency_level, review_status, deleted) VALUES
-('acute_upper_respiratory_infection', '急性上呼吸道感染', '["感冒","上呼吸道感染","儿童咳嗽"]', '["发热","咳嗽","咽痛","流涕"]', 'all', 0, 17, 'child', 'medium', 'approved', 0),
-('geriatric_cognitive_decline', '老年认知功能下降', '["记忆下降","老年健忘","老年记忆下降"]', '["记忆下降","反应变慢","定向力差"]', 'all', 65, 120, 'elderly', 'medium', 'approved', 0),
-('pelvic_inflammatory_disease', '盆腔炎', '["女性下腹痛","盆腔感染"]', '["下腹痛","白带异常","发热"]', 'female_only', 14, 60, 'adult', 'medium', 'approved', 0),
-('benign_prostatic_hyperplasia', '良性前列腺增生', '["前列腺增生","男性排尿异常"]', '["尿频","尿急","排尿困难","夜尿增多"]', 'male_only', 40, 120, 'adult', 'medium', 'approved', 0),
-('lumbar_disc_herniation', '腰椎间盘突出', '["腰腿痛","腰痛伴下肢麻木"]', '["腰痛","下肢麻木","放射痛","腿痛"]', 'all', 16, 80, 'adult', 'medium', 'approved', 0),
-('post_transplant_followup', '器官移植术后随访', '["移植术后复查","移植术后异常复查"]', '["移植术后","复查","排异","免疫抑制剂"]', 'all', 0, 120, 'all', 'high', 'approved', 0);
+('acute_upper_respiratory_infection', 'Acute Upper Respiratory Infection', '["cold","upper respiratory infection","child cough"]', '["fever","cough","sore throat","runny nose"]', 'all', 0, 17, 'child', 'medium', 'approved', 0),
+('geriatric_cognitive_decline', 'Geriatric Cognitive Decline', '["memory decline","elderly forgetfulness"]', '["memory decline","slow response","disorientation"]', 'all', 65, 120, 'elderly', 'medium', 'approved', 0),
+('pelvic_inflammatory_disease', 'Pelvic Inflammatory Disease', '["lower abdominal pain in women","pid"]', '["lower abdominal pain","abnormal discharge","fever"]', 'female_only', 14, 60, 'adult', 'medium', 'approved', 0),
+('benign_prostatic_hyperplasia', 'Benign Prostatic Hyperplasia', '["bph","male urinary symptoms"]', '["frequent urination","urgency","difficulty urinating","nocturia"]', 'male_only', 40, 120, 'adult', 'medium', 'approved', 0),
+('lumbar_disc_herniation', 'Lumbar Disc Herniation', '["low back and leg pain","lumbar disc"]', '["low back pain","leg numbness","radiating pain","leg pain"]', 'all', 16, 80, 'adult', 'medium', 'approved', 0),
+('post_transplant_followup', 'Post Transplant Followup', '["post transplant review","transplant followup"]', '["post transplant","review","rejection","immunosuppression"]', 'all', 0, 120, 'all', 'high', 'approved', 0);
 
 INSERT INTO disease_alias (disease_code, alias_name, alias_type, source) VALUES
-('acute_upper_respiratory_infection', '儿童咳嗽', 'symptom_alias', 'seed'),
-('geriatric_cognitive_decline', '老年记忆下降', 'symptom_alias', 'seed'),
-('pelvic_inflammatory_disease', '女性下腹痛', 'symptom_alias', 'seed'),
-('benign_prostatic_hyperplasia', '男性排尿异常', 'symptom_alias', 'seed'),
-('lumbar_disc_herniation', '腰腿痛', 'symptom_alias', 'seed'),
-('post_transplant_followup', '移植术后异常复查', 'symptom_alias', 'seed');
+('acute_upper_respiratory_infection', 'child cough', 'symptom_alias', 'seed'),
+('geriatric_cognitive_decline', 'memory decline', 'symptom_alias', 'seed'),
+('pelvic_inflammatory_disease', 'lower abdominal pain in women', 'symptom_alias', 'seed'),
+('benign_prostatic_hyperplasia', 'male urinary symptoms', 'symptom_alias', 'seed'),
+('lumbar_disc_herniation', 'low back and leg pain', 'symptom_alias', 'seed'),
+('post_transplant_followup', 'post transplant review', 'symptom_alias', 'seed');
 
 INSERT INTO medical_capability_catalog (capability_code, capability_name, capability_type, parent_code, standard_dept_code, aliases_json, gender_rule, age_min, age_max, crowd_tags_json, pathway_tags_json, active_status) VALUES
-('cap_pediatrics', '儿科', 'STANDARD_DEPT', NULL, 'PED', '["儿科","儿童发热"]', 'all', 0, 17, '["child","adolescent"]', '[]', 1),
-('cap_pediatric_fever_clinic', '儿童发热门诊', 'SPECIAL_PATHWAY', 'cap_pediatrics', 'PED', '["儿童发热门诊","儿科发热"]', 'all', 0, 17, '["child","adolescent"]', '["child_fever_pathway"]', 1),
-('cap_geriatrics', '老年病科', 'SPECIAL_POPULATION', NULL, 'GER', '["老年病科","老年综合评估"]', 'all', 65, 120, '["elderly"]', '[]', 1),
-('cap_memory_clinic', '记忆障碍门诊', 'SUBSPECIALTY', 'cap_geriatrics', 'GER', '["记忆门诊","认知门诊"]', 'all', 65, 120, '["elderly"]', '["elderly_multisymptom_pathway"]', 1),
-('cap_gynecology', '妇科', 'STANDARD_DEPT', NULL, 'GYN', '["妇科"]', 'female_only', 14, 60, '[]', '[]', 1),
-('cap_andrology', '男科', 'STANDARD_DEPT', NULL, 'AND', '["男科"]', 'male_only', 18, 120, '[]', '[]', 1),
-('cap_male_urinary_clinic', '男性排尿异常门诊', 'SUBSPECIALTY', 'cap_andrology', 'AND', '["排尿异常门诊","前列腺专病"]', 'male_only', 18, 120, '[]', '["male_urinary_pathway"]', 1),
-('cap_orthopedics', '骨科', 'STANDARD_DEPT', NULL, 'ORT', '["骨科"]', 'all', 12, 80, '["adolescent","adult"]', '[]', 1),
-('cap_spine_surgery', '脊柱外科', 'SUBSPECIALTY', 'cap_orthopedics', 'ORT', '["脊柱外科","腰椎专病"]', 'all', 16, 80, '[]', '["spine_pathway"]', 1),
-('cap_spine_pain_clinic', '脊柱疼痛专病门诊', 'SUBSPECIALTY', 'cap_spine_surgery', 'ORT', '["腰腿痛门诊","脊柱疼痛门诊"]', 'all', 16, 80, '[]', '["spine_pathway"]', 1),
-('cap_transplant_followup', '器官移植随访', 'SPECIAL_PATHWAY', NULL, 'TRP', '["移植随访","移植门诊"]', 'all', 0, 120, '["transplant_followup"]', '["transplant_followup"]', 1);
+('cap_pediatrics', 'Pediatrics', 'STANDARD_DEPT', NULL, 'PED', '["pediatrics","child fever"]', 'all', 0, 17, '["child","adolescent"]', '[]', 1),
+('cap_pediatric_fever_clinic', 'Pediatric Fever Clinic', 'SPECIAL_PATHWAY', 'cap_pediatrics', 'PED', '["pediatric fever clinic","child fever"]', 'all', 0, 17, '["child","adolescent"]', '["child_fever_pathway"]', 1),
+('cap_geriatrics', 'Geriatrics', 'SPECIAL_POPULATION', NULL, 'GER', '["geriatrics","elderly clinic"]', 'all', 65, 120, '["elderly"]', '[]', 1),
+('cap_memory_clinic', 'Memory Clinic', 'SUBSPECIALTY', 'cap_geriatrics', 'GER', '["memory clinic","cognitive clinic"]', 'all', 65, 120, '["elderly"]', '["elderly_multisymptom_pathway"]', 1),
+('cap_gynecology', 'Gynecology', 'STANDARD_DEPT', NULL, 'GYN', '["gynecology"]', 'female_only', 14, 60, '[]', '[]', 1),
+('cap_andrology', 'Andrology', 'STANDARD_DEPT', NULL, 'AND', '["andrology"]', 'male_only', 18, 120, '[]', '[]', 1),
+('cap_male_urinary_clinic', 'Male Urinary Clinic', 'SUBSPECIALTY', 'cap_andrology', 'AND', '["urinary clinic","prostate clinic"]', 'male_only', 18, 120, '[]', '["male_urinary_pathway"]', 1),
+('cap_orthopedics', 'Orthopedics', 'STANDARD_DEPT', NULL, 'ORT', '["orthopedics"]', 'all', 12, 80, '["adolescent","adult"]', '[]', 1),
+('cap_spine_surgery', 'Spine Surgery', 'SUBSPECIALTY', 'cap_orthopedics', 'ORT', '["spine surgery","lumbar clinic"]', 'all', 16, 80, '[]', '["spine_pathway"]', 1),
+('cap_spine_pain_clinic', 'Spine Pain Clinic', 'SUBSPECIALTY', 'cap_spine_surgery', 'ORT', '["back pain clinic","spine pain clinic"]', 'all', 16, 80, '[]', '["spine_pathway"]', 1),
+('cap_transplant_followup', 'Transplant Followup', 'SPECIAL_PATHWAY', NULL, 'TRP', '["transplant followup","transplant clinic"]', 'all', 0, 120, '["transplant_followup"]', '["transplant_followup"]', 1);
 
 INSERT INTO disease_capability_rel (disease_code, capability_code, rel_type, priority_score, crowd_constraint, note) VALUES
-('acute_upper_respiratory_infection', 'cap_pediatrics', 'PRIMARY', 1.20, 'child', '儿童发热和咳嗽优先儿科'),
-('acute_upper_respiratory_infection', 'cap_pediatric_fever_clinic', 'SECONDARY', 1.35, 'child', '儿童发热可进一步召回发热门诊'),
-('geriatric_cognitive_decline', 'cap_geriatrics', 'PRIMARY', 1.30, 'elderly', '老年记忆下降优先老年病路径'),
-('geriatric_cognitive_decline', 'cap_memory_clinic', 'SECONDARY', 1.45, 'elderly', '老年认知下降可细化到记忆障碍门诊'),
-('pelvic_inflammatory_disease', 'cap_gynecology', 'PRIMARY', 1.20, 'female', '女性下腹痛优先妇科'),
-('benign_prostatic_hyperplasia', 'cap_andrology', 'PRIMARY', 1.20, 'male', '男性排尿异常优先男科'),
-('benign_prostatic_hyperplasia', 'cap_male_urinary_clinic', 'SECONDARY', 1.40, 'male', '排尿异常可细化到男性排尿异常门诊'),
-('lumbar_disc_herniation', 'cap_spine_surgery', 'PRIMARY', 1.40, NULL, '腰腿痛场景优先脊柱外科'),
-('lumbar_disc_herniation', 'cap_spine_pain_clinic', 'SECONDARY', 1.50, NULL, '腰腿痛可细化到脊柱疼痛专病门诊'),
-('post_transplant_followup', 'cap_transplant_followup', 'PRIMARY', 1.60, 'transplant_followup', '移植术后复查走特殊路径');
+('acute_upper_respiratory_infection', 'cap_pediatrics', 'PRIMARY', 1.20, 'child', 'Child fever and cough should prefer pediatrics'),
+('acute_upper_respiratory_infection', 'cap_pediatric_fever_clinic', 'SECONDARY', 1.35, 'child', 'Child fever can be routed to fever clinic'),
+('geriatric_cognitive_decline', 'cap_geriatrics', 'PRIMARY', 1.30, 'elderly', 'Elderly cognitive decline should prefer geriatrics'),
+('geriatric_cognitive_decline', 'cap_memory_clinic', 'SECONDARY', 1.45, 'elderly', 'Elderly cognitive decline can be refined to memory clinic'),
+('pelvic_inflammatory_disease', 'cap_gynecology', 'PRIMARY', 1.20, 'female', 'Female lower abdominal pain should prefer gynecology'),
+('benign_prostatic_hyperplasia', 'cap_andrology', 'PRIMARY', 1.20, 'male', 'Male urinary symptoms should prefer andrology'),
+('benign_prostatic_hyperplasia', 'cap_male_urinary_clinic', 'SECONDARY', 1.40, 'male', 'Urinary symptoms can be refined to male urinary clinic'),
+('lumbar_disc_herniation', 'cap_spine_surgery', 'PRIMARY', 1.40, NULL, 'Back and leg pain should prefer spine surgery'),
+('lumbar_disc_herniation', 'cap_spine_pain_clinic', 'SECONDARY', 1.50, NULL, 'Back and leg pain can be refined to spine pain clinic'),
+('post_transplant_followup', 'cap_transplant_followup', 'PRIMARY', 1.60, 'transplant_followup', 'Post transplant followup should use transplant pathway');
 
 INSERT INTO hospital (id, hospital_code, hospital_name, city, active_status, deleted) VALUES
-(1, 'example_general_hospital_a', '示例综合医院A', '示例城市', 1, 0),
-(2, 'example_specialty_center_b', '示例专科中心B', '示例城市', 1, 0);
+(1, 'example_general_hospital_a', 'Example General Hospital A', 'Wuhan', 1, 0),
+(2, 'example_specialty_center_b', 'Example Specialty Center B', 'Wuhan', 1, 0);
 
 INSERT INTO hospital_department (id, hospital_id, department_name, parent_department_name, department_intro, service_scope, active_status, deleted, gender_rule, age_min, age_max, crowd_tags_json) VALUES
-(1, 1, '儿科门诊', '儿科', '儿童常见病初诊门诊', '发热、咳嗽、上呼吸道症状', 1, 0, 'all', 0, 17, '["child","adolescent"]'),
-(2, 1, '儿童发热门诊', '儿科', '儿童发热快速评估门诊', '儿童发热、急性呼吸道症状', 1, 0, 'all', 0, 17, '["child","adolescent"]'),
-(3, 1, '老年病科', '内科', '老年综合评估门诊', '认知下降、慢病共管、多症状老年患者', 1, 0, 'all', 65, 120, '["elderly"]'),
-(4, 1, '记忆障碍门诊', '老年病科', '老年认知与记忆专病门诊', '记忆下降、认知障碍、反应变慢', 1, 0, 'all', 65, 120, '["elderly"]'),
-(5, 1, '妇科门诊', '妇产科', '女性专科门诊', '女性下腹痛、盆腔炎、月经异常', 1, 0, 'female_only', 14, 60, '[]'),
-(6, 1, '男科门诊', '泌尿外科', '男性专科门诊', '排尿异常、前列腺相关问题', 1, 0, 'male_only', 18, 120, '[]'),
-(7, 1, '男性排尿异常门诊', '男科', '男性排尿问题专病门诊', '尿频、尿急、夜尿增多、前列腺相关问题', 1, 0, 'male_only', 18, 120, '[]'),
-(8, 1, '脊柱外科门诊', '骨科', '脊柱专病门诊', '腰椎间盘突出、腰腿痛、下肢麻木', 1, 0, 'all', 16, 80, '[]'),
-(9, 1, '脊柱疼痛专病门诊', '脊柱外科', '腰腿痛专病门诊', '腰腿痛、坐骨神经痛、慢性腰痛', 1, 0, 'all', 16, 80, '[]'),
-(10, 2, '器官移植随访门诊', '移植医学中心', '移植术后专病路径', '术后复查、排异监测、免疫抑制剂调整', 1, 0, 'all', 0, 120, '["transplant_followup"]');
+(1, 1, 'Pediatrics Clinic', 'Pediatrics', 'Outpatient clinic for common pediatric diseases', 'fever,cough,upper respiratory symptoms', 1, 0, 'all', 0, 17, '["child","adolescent"]'),
+(2, 1, 'Pediatric Fever Clinic', 'Pediatrics', 'Rapid assessment clinic for child fever', 'child fever,acute respiratory symptoms', 1, 0, 'all', 0, 17, '["child","adolescent"]'),
+(3, 1, 'Geriatrics Clinic', 'Internal Medicine', 'Comprehensive clinic for older adults', 'memory decline,chronic disease,multiple symptoms', 1, 0, 'all', 65, 120, '["elderly"]'),
+(4, 1, 'Memory Clinic', 'Geriatrics', 'Specialized memory and cognition clinic', 'memory decline,cognitive impairment,slow response', 1, 0, 'all', 65, 120, '["elderly"]'),
+(5, 1, 'Gynecology Clinic', 'Gynecology', 'Women health outpatient clinic', 'lower abdominal pain,pelvic inflammation,menstrual issues', 1, 0, 'female_only', 14, 60, '[]'),
+(6, 1, 'Andrology Clinic', 'Urology', 'Male health outpatient clinic', 'urinary symptoms,prostate issues', 1, 0, 'male_only', 18, 120, '[]'),
+(7, 1, 'Male Urinary Clinic', 'Andrology', 'Specialized male urinary clinic', 'frequent urination,urgency,nocturia,prostate issues', 1, 0, 'male_only', 18, 120, '[]'),
+(8, 1, 'Spine Surgery Clinic', 'Orthopedics', 'Specialized spine clinic', 'lumbar disc herniation,low back pain,leg numbness', 1, 0, 'all', 16, 80, '[]'),
+(9, 1, 'Spine Pain Clinic', 'Spine Surgery', 'Specialized back pain clinic', 'back pain,sciatica,chronic lumbar pain', 1, 0, 'all', 16, 80, '[]'),
+(10, 2, 'Transplant Followup Clinic', 'Transplant Center', 'Followup pathway after transplant', 'postoperative review,rejection monitoring,immunosuppression management', 1, 0, 'all', 0, 120, '["transplant_followup"]');
 
 INSERT INTO department_capability_rel (department_id, capability_code, support_level, weight, source) VALUES
 (1, 'cap_pediatrics', 'PRIMARY', 1.00, 'seed-example'),
@@ -248,11 +251,11 @@ INSERT INTO department_capability_rel (department_id, capability_code, support_l
 (10, 'cap_transplant_followup', 'PRIMARY', 1.20, 'seed-example');
 
 INSERT INTO doctor_profile (id, hospital_id, department_id, doctor_name, title, specialty_text, gender_rule, age_min, age_max, crowd_tags_json, active_status) VALUES
-(1, 1, 2, '张小宁', '副主任医师', '儿童发热与呼吸道感染', 'all', 0, 17, '["child","adolescent"]', 1),
-(2, 1, 4, '周忆安', '主任医师', '老年认知障碍与记忆下降', 'all', 65, 120, '["elderly"]', 1),
-(3, 1, 7, '陈泌安', '副主任医师', '男性排尿异常与前列腺专病', 'male_only', 18, 120, '[]', 1),
-(4, 1, 9, '李脊衡', '主任医师', '腰腿痛与脊柱疼痛专病', 'all', 16, 80, '[]', 1),
-(5, 2, 10, '王移宁', '主任医师', '器官移植术后随访与排异管理', 'all', 0, 120, '["transplant_followup"]', 1);
+(1, 1, 2, 'Dr. Zhang', 'Associate Chief Physician', 'Child fever and respiratory infection', 'all', 0, 17, '["child","adolescent"]', 1),
+(2, 1, 4, 'Dr. Zhou', 'Chief Physician', 'Elderly cognition and memory decline', 'all', 65, 120, '["elderly"]', 1),
+(3, 1, 7, 'Dr. Chen', 'Associate Chief Physician', 'Male urinary symptoms and prostate disease', 'male_only', 18, 120, '[]', 1),
+(4, 1, 9, 'Dr. Li', 'Chief Physician', 'Low back pain and spine pain conditions', 'all', 16, 80, '[]', 1),
+(5, 2, 10, 'Dr. Wang', 'Chief Physician', 'Transplant followup and rejection management', 'all', 0, 120, '["transplant_followup"]', 1);
 
 INSERT INTO doctor_capability_rel (doctor_id, capability_code, weight) VALUES
 (1, 'cap_pediatric_fever_clinic', 0.45),

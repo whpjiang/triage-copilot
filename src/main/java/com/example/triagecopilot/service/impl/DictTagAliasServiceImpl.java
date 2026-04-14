@@ -7,10 +7,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.triagecopilot.entity.DictTagAlias;
 import com.example.triagecopilot.mapper.DictTagAliasMapper;
 import com.example.triagecopilot.service.DictTagAliasService;
-import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-@Service
 public class DictTagAliasServiceImpl extends ServiceImpl<DictTagAliasMapper, DictTagAlias> implements DictTagAliasService {
 
     @Override

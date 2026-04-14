@@ -7,9 +7,6 @@ import com.example.triage.infrastructure.persistence.model.DiseaseRecord;
 import com.example.triage.infrastructure.persistence.repository.AiRecallAuditRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -23,16 +20,16 @@ import java.util.Set;
 @Component
 public class AiDiseaseRecallClient {
 
-    private final ObjectProvider<ChatModel> chatModelProvider;
+    private final DashScopeCompatibleClient dashScopeCompatibleClient;
     private final ObjectMapper objectMapper;
     private final DiseaseNormalizeService diseaseNormalizeService;
     private final AiRecallAuditRepository aiRecallAuditRepository;
 
-    public AiDiseaseRecallClient(ObjectProvider<ChatModel> chatModelProvider,
+    public AiDiseaseRecallClient(DashScopeCompatibleClient dashScopeCompatibleClient,
                                  ObjectMapper objectMapper,
                                  DiseaseNormalizeService diseaseNormalizeService,
                                  AiRecallAuditRepository aiRecallAuditRepository) {
-        this.chatModelProvider = chatModelProvider;
+        this.dashScopeCompatibleClient = dashScopeCompatibleClient;
         this.objectMapper = objectMapper;
         this.diseaseNormalizeService = diseaseNormalizeService;
         this.aiRecallAuditRepository = aiRecallAuditRepository;
@@ -51,8 +48,7 @@ public class AiDiseaseRecallClient {
             audit(symptoms, profile, eligibleDiseases, ruleCandidates, List.of(), "SKIPPED_HIGH_RISK", "high-risk symptoms require rule-based handling");
             return List.of();
         }
-        ChatModel model = chatModelProvider.getIfAvailable();
-        if (model == null) {
+        if (!dashScopeCompatibleClient.isConfigured()) {
             audit(symptoms, profile, eligibleDiseases, ruleCandidates, List.of(), "SKIPPED_NO_MODEL", "chat model unavailable");
             return List.of();
         }
@@ -74,12 +70,10 @@ public class AiDiseaseRecallClient {
                     ruleCandidates.stream().map(DiseaseCandidate::diseaseCode).distinct().toList(),
                     buildDiseaseOptions(symptoms, eligibleDiseases)
             );
-            String response = ChatClient.builder(model).build()
-                    .prompt()
-                    .system("Return only a JSON array of disease_code values chosen from the provided options.")
-                    .user(prompt)
-                    .call()
-                    .content();
+            String response = dashScopeCompatibleClient.chat(
+                    "Return only a JSON array of disease_code values chosen from the provided options.",
+                    prompt
+            );
             List<String> suggestions = parseDiseaseCodes(response);
             audit(symptoms, profile, eligibleDiseases, ruleCandidates, suggestions, "SUGGESTED", truncate(response));
             return suggestions;

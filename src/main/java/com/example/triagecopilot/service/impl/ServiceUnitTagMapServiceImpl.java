@@ -7,10 +7,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.triagecopilot.entity.ServiceUnitTagMap;
 import com.example.triagecopilot.mapper.ServiceUnitTagMapMapper;
 import com.example.triagecopilot.service.ServiceUnitTagMapService;
-import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-@Service
 public class ServiceUnitTagMapServiceImpl extends ServiceImpl<ServiceUnitTagMapMapper, ServiceUnitTagMap> implements ServiceUnitTagMapService {
 
     @Override

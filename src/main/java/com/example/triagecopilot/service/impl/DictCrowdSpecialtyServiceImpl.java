@@ -7,10 +7,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.triagecopilot.entity.DictCrowdSpecialty;
 import com.example.triagecopilot.mapper.DictCrowdSpecialtyMapper;
 import com.example.triagecopilot.service.DictCrowdSpecialtyService;
-import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-@Service
 public class DictCrowdSpecialtyServiceImpl extends ServiceImpl<DictCrowdSpecialtyMapper, DictCrowdSpecialty> implements DictCrowdSpecialtyService {
 
     @Override

@@ -54,7 +54,7 @@ public class BaseDataAdminRepository {
 
     public void addFailure(long jobId, int rowNumber, String rawContent, String errorMessage) {
         jdbcTemplate.update(
-                "insert into import_failure_log(job_id, row_number, raw_content, error_message) values (?, ?, ?, ?)",
+                "insert into import_failure_log(job_id, `row_number`, raw_content, error_message) values (?, ?, ?, ?)",
                 jobId, rowNumber, rawContent, errorMessage
         );
     }
@@ -342,7 +342,7 @@ public class BaseDataAdminRepository {
 
     public List<ImportFailureLogRecord> findFailuresByJobId(Long jobId, int limit) {
         return jdbcTemplate.query("""
-                select id, job_id, row_number, raw_content, error_message
+                select id, job_id, `row_number`, raw_content, error_message
                 from import_failure_log
                 where job_id = ?
                 order by id asc

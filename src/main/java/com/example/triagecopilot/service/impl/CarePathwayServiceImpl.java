@@ -7,10 +7,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.triagecopilot.entity.CarePathway;
 import com.example.triagecopilot.mapper.CarePathwayMapper;
 import com.example.triagecopilot.service.CarePathwayService;
-import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-@Service
 public class CarePathwayServiceImpl extends ServiceImpl<CarePathwayMapper, CarePathway> implements CarePathwayService {
 
     @Override

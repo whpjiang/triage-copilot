@@ -7,10 +7,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.triagecopilot.entity.ServiceUnitCapability;
 import com.example.triagecopilot.mapper.ServiceUnitCapabilityMapper;
 import com.example.triagecopilot.service.ServiceUnitCapabilityService;
-import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-@Service
 public class ServiceUnitCapabilityServiceImpl extends ServiceImpl<ServiceUnitCapabilityMapper, ServiceUnitCapability> implements ServiceUnitCapabilityService {
 
     @Override

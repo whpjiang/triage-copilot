@@ -7,10 +7,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.triagecopilot.entity.HospitalCampus;
 import com.example.triagecopilot.mapper.HospitalCampusMapper;
 import com.example.triagecopilot.service.HospitalCampusService;
-import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-@Service
 public class HospitalCampusServiceImpl extends ServiceImpl<HospitalCampusMapper, HospitalCampus> implements HospitalCampusService {
 
     @Override
