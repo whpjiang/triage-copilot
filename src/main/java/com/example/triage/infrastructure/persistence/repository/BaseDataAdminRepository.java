@@ -1,16 +1,33 @@
 package com.example.triage.infrastructure.persistence.repository;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.example.triage.infrastructure.persistence.entity.DepartmentCapabilityRelEntity;
+import com.example.triage.infrastructure.persistence.entity.DiseaseAliasEntity;
+import com.example.triage.infrastructure.persistence.entity.DiseaseCapabilityRelEntity;
+import com.example.triage.infrastructure.persistence.entity.DiseaseMasterEntity;
+import com.example.triage.infrastructure.persistence.entity.HospitalDepartmentEntity;
+import com.example.triage.infrastructure.persistence.entity.HospitalEntity;
+import com.example.triage.infrastructure.persistence.entity.ImportFailureLogEntity;
+import com.example.triage.infrastructure.persistence.entity.ImportJobRecordEntity;
+import com.example.triage.infrastructure.persistence.entity.ImportReviewItemEntity;
+import com.example.triage.infrastructure.persistence.entity.MedicalCapabilityCatalogEntity;
+import com.example.triage.infrastructure.persistence.mapper.DepartmentCapabilityRelMapper;
+import com.example.triage.infrastructure.persistence.mapper.DiseaseAliasMapper;
+import com.example.triage.infrastructure.persistence.mapper.DiseaseCapabilityRelMapper;
+import com.example.triage.infrastructure.persistence.mapper.DiseaseMasterMapper;
+import com.example.triage.infrastructure.persistence.mapper.HospitalDepartmentMapper;
+import com.example.triage.infrastructure.persistence.mapper.HospitalMapper;
+import com.example.triage.infrastructure.persistence.mapper.ImportFailureLogMapper;
+import com.example.triage.infrastructure.persistence.mapper.ImportJobRecordMapper;
+import com.example.triage.infrastructure.persistence.mapper.ImportReviewItemMapper;
+import com.example.triage.infrastructure.persistence.mapper.MedicalCapabilityCatalogMapper;
 import com.example.triage.infrastructure.persistence.model.ImportFailureLogRecord;
 import com.example.triage.infrastructure.persistence.model.ImportJobRecord;
 import com.example.triage.infrastructure.persistence.model.ImportReviewItemRecord;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
-import java.sql.PreparedStatement;
-import java.sql.Statement;
-import java.util.ArrayList;
+import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,25 +35,50 @@ import java.util.Map;
 @Repository
 public class BaseDataAdminRepository {
 
-    private final JdbcTemplate jdbcTemplate;
+    private final ImportJobRecordMapper importJobRecordMapper;
+    private final ImportFailureLogMapper importFailureLogMapper;
+    private final ImportReviewItemMapper importReviewItemMapper;
+    private final DiseaseMasterMapper diseaseMasterMapper;
+    private final DiseaseAliasMapper diseaseAliasMapper;
+    private final DiseaseCapabilityRelMapper diseaseCapabilityRelMapper;
+    private final HospitalMapper hospitalMapper;
+    private final HospitalDepartmentMapper hospitalDepartmentMapper;
+    private final MedicalCapabilityCatalogMapper medicalCapabilityCatalogMapper;
+    private final DepartmentCapabilityRelMapper departmentCapabilityRelMapper;
 
-    public BaseDataAdminRepository(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+    public BaseDataAdminRepository(ImportJobRecordMapper importJobRecordMapper,
+                                   ImportFailureLogMapper importFailureLogMapper,
+                                   ImportReviewItemMapper importReviewItemMapper,
+                                   DiseaseMasterMapper diseaseMasterMapper,
+                                   DiseaseAliasMapper diseaseAliasMapper,
+                                   DiseaseCapabilityRelMapper diseaseCapabilityRelMapper,
+                                   HospitalMapper hospitalMapper,
+                                   HospitalDepartmentMapper hospitalDepartmentMapper,
+                                   MedicalCapabilityCatalogMapper medicalCapabilityCatalogMapper,
+                                   DepartmentCapabilityRelMapper departmentCapabilityRelMapper) {
+        this.importJobRecordMapper = importJobRecordMapper;
+        this.importFailureLogMapper = importFailureLogMapper;
+        this.importReviewItemMapper = importReviewItemMapper;
+        this.diseaseMasterMapper = diseaseMasterMapper;
+        this.diseaseAliasMapper = diseaseAliasMapper;
+        this.diseaseCapabilityRelMapper = diseaseCapabilityRelMapper;
+        this.hospitalMapper = hospitalMapper;
+        this.hospitalDepartmentMapper = hospitalDepartmentMapper;
+        this.medicalCapabilityCatalogMapper = medicalCapabilityCatalogMapper;
+        this.departmentCapabilityRelMapper = departmentCapabilityRelMapper;
     }
 
     public long createImportJob(String datasetType, String fileName) {
-        KeyHolder keyHolder = new GeneratedKeyHolder();
-        jdbcTemplate.update(connection -> {
-            PreparedStatement ps = connection.prepareStatement(
-                    "insert into import_job_record(dataset_type, file_name, status, success_count, failure_count, review_count, auto_mapped_count) values (?, ?, ?, 0, 0, 0, 0)",
-                    Statement.RETURN_GENERATED_KEYS
-            );
-            ps.setString(1, datasetType);
-            ps.setString(2, fileName);
-            ps.setString(3, "PROCESSING");
-            return ps;
-        }, keyHolder);
-        return extractGeneratedId(keyHolder);
+        ImportJobRecordEntity entity = new ImportJobRecordEntity();
+        entity.datasetType = datasetType;
+        entity.fileName = fileName;
+        entity.status = "PROCESSING";
+        entity.successCount = 0;
+        entity.failureCount = 0;
+        entity.reviewCount = 0;
+        entity.autoMappedCount = 0;
+        importJobRecordMapper.insert(entity);
+        return entity.id == null ? 0L : entity.id;
     }
 
     public void finishImportJob(long jobId,
@@ -46,50 +88,82 @@ public class BaseDataAdminRepository {
                                 int autoMappedCount,
                                 String status,
                                 String message) {
-        jdbcTemplate.update(
-                "update import_job_record set success_count = ?, failure_count = ?, review_count = ?, auto_mapped_count = ?, status = ?, message = ?, update_time = current_timestamp where id = ?",
-                successCount, failureCount, reviewCount, autoMappedCount, status, message, jobId
-        );
+        importJobRecordMapper.update(null, new UpdateWrapper<ImportJobRecordEntity>()
+                .eq("id", jobId)
+                .set("success_count", successCount)
+                .set("failure_count", failureCount)
+                .set("review_count", reviewCount)
+                .set("auto_mapped_count", autoMappedCount)
+                .set("status", status)
+                .set("message", message)
+                .setSql("update_time = current_timestamp"));
     }
 
     public void addFailure(long jobId, int rowNumber, String rawContent, String errorMessage) {
-        jdbcTemplate.update(
-                "insert into import_failure_log(job_id, `row_number`, raw_content, error_message) values (?, ?, ?, ?)",
-                jobId, rowNumber, rawContent, errorMessage
-        );
+        ImportFailureLogEntity entity = new ImportFailureLogEntity();
+        entity.jobId = jobId;
+        entity.rowNumber = rowNumber;
+        entity.rawContent = rawContent;
+        entity.errorMessage = errorMessage;
+        importFailureLogMapper.insert(entity);
     }
 
     public void addReviewItem(long jobId, String datasetType, String itemKey, String issueType, String rawContent, String suggestion) {
-        jdbcTemplate.update(
-                "insert into import_review_item(job_id, dataset_type, item_key, issue_type, raw_content, suggestion, resolved) values (?, ?, ?, ?, ?, ?, 0)",
-                jobId, datasetType, itemKey, issueType, rawContent, suggestion
-        );
+        ImportReviewItemEntity entity = new ImportReviewItemEntity();
+        entity.jobId = jobId;
+        entity.datasetType = datasetType;
+        entity.itemKey = itemKey;
+        entity.issueType = issueType;
+        entity.rawContent = rawContent;
+        entity.suggestion = suggestion;
+        entity.resolved = 0;
+        importReviewItemMapper.insert(entity);
     }
 
     public void upsertDisease(String diseaseCode, String diseaseName, String aliasesJson, String symptomKeywords, String genderRule,
                               Integer ageMin, Integer ageMax, String ageGroup, String urgencyLevel, String reviewStatus) {
-        Integer exists = jdbcTemplate.queryForObject("select count(1) from disease_master where disease_code = ?", Integer.class, diseaseCode);
-        if (exists != null && exists > 0) {
-            jdbcTemplate.update("""
-                    update disease_master
-                    set disease_name = ?, aliases_json = ?, symptom_keywords = ?, gender_rule = ?, age_min = ?, age_max = ?, age_group = ?, urgency_level = ?, review_status = ?, update_time = current_timestamp
-                    where disease_code = ?
-                    """, diseaseName, aliasesJson, symptomKeywords, genderRule, ageMin, ageMax, ageGroup, urgencyLevel, reviewStatus, diseaseCode);
-        } else {
-            jdbcTemplate.update("""
-                    insert into disease_master(disease_code, disease_name, aliases_json, symptom_keywords, gender_rule, age_min, age_max, age_group, urgency_level, review_status, deleted)
-                    values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-                    """, diseaseCode, diseaseName, aliasesJson, symptomKeywords, genderRule, ageMin, ageMax, ageGroup, urgencyLevel, reviewStatus);
+        DiseaseMasterEntity entity = diseaseMasterMapper.selectOne(new QueryWrapper<DiseaseMasterEntity>()
+                .eq("disease_code", diseaseCode)
+                .last("limit 1"));
+        if (entity == null) {
+            entity = new DiseaseMasterEntity();
+            entity.diseaseCode = diseaseCode;
+            entity.deleted = 0;
+            entity.diseaseName = diseaseName;
+            entity.aliasesJson = aliasesJson;
+            entity.symptomKeywords = symptomKeywords;
+            entity.genderRule = genderRule;
+            entity.ageMin = ageMin;
+            entity.ageMax = ageMax;
+            entity.ageGroup = ageGroup;
+            entity.urgencyLevel = urgencyLevel;
+            entity.reviewStatus = reviewStatus;
+            diseaseMasterMapper.insert(entity);
+            return;
         }
+        diseaseMasterMapper.update(null, new UpdateWrapper<DiseaseMasterEntity>()
+                .eq("id", entity.id)
+                .set("disease_name", diseaseName)
+                .set("aliases_json", aliasesJson)
+                .set("symptom_keywords", symptomKeywords)
+                .set("gender_rule", genderRule)
+                .set("age_min", ageMin)
+                .set("age_max", ageMax)
+                .set("age_group", ageGroup)
+                .set("urgency_level", urgencyLevel)
+                .set("review_status", reviewStatus)
+                .setSql("update_time = current_timestamp"));
     }
 
     public void replaceDiseaseAliases(String diseaseCode, List<String> aliases) {
-        jdbcTemplate.update("delete from disease_alias where disease_code = ?", diseaseCode);
+        diseaseAliasMapper.delete(new QueryWrapper<DiseaseAliasEntity>().eq("disease_code", diseaseCode));
         for (String alias : aliases) {
-            jdbcTemplate.update(
-                    "insert into disease_alias(disease_code, alias_name, alias_type, source) values (?, ?, ?, ?)",
-                    diseaseCode, alias, "imported", "base-data-import"
-            );
+            DiseaseAliasEntity entity = new DiseaseAliasEntity();
+            entity.diseaseCode = diseaseCode;
+            entity.aliasName = alias;
+            entity.aliasType = "imported";
+            entity.source = "base-data-import";
+            diseaseAliasMapper.insert(entity);
         }
     }
 
@@ -98,88 +172,89 @@ public class BaseDataAdminRepository {
                                                 String relType,
                                                 double priorityScore,
                                                 String note) {
-        Integer count = jdbcTemplate.queryForObject(
-                "select count(1) from disease_capability_rel where disease_code = ? and capability_code = ?",
-                Integer.class,
-                diseaseCode,
-                capabilityCode
-        );
-        if (count != null && count > 0) {
-            jdbcTemplate.update(
-                    "update disease_capability_rel set rel_type = ?, priority_score = ?, note = ? where disease_code = ? and capability_code = ?",
-                    relType, priorityScore, note, diseaseCode, capabilityCode
-            );
+        DiseaseCapabilityRelEntity entity = diseaseCapabilityRelMapper.selectOne(new QueryWrapper<DiseaseCapabilityRelEntity>()
+                .eq("disease_code", diseaseCode)
+                .eq("capability_code", capabilityCode)
+                .last("limit 1"));
+        if (entity == null) {
+            entity = new DiseaseCapabilityRelEntity();
+            entity.diseaseCode = diseaseCode;
+            entity.capabilityCode = capabilityCode;
+            entity.relType = relType;
+            entity.priorityScore = BigDecimal.valueOf(priorityScore);
+            entity.note = note;
+            diseaseCapabilityRelMapper.insert(entity);
             return;
         }
-        jdbcTemplate.update(
-                "insert into disease_capability_rel(disease_code, capability_code, rel_type, priority_score, note) values (?, ?, ?, ?, ?)",
-                diseaseCode, capabilityCode, relType, priorityScore, note
-        );
+        diseaseCapabilityRelMapper.update(null, new UpdateWrapper<DiseaseCapabilityRelEntity>()
+                .eq("id", entity.id)
+                .set("rel_type", relType)
+                .set("priority_score", BigDecimal.valueOf(priorityScore))
+                .set("note", note));
     }
 
     public long upsertHospital(String hospitalCode, String hospitalName, String city) {
-        List<Long> ids = jdbcTemplate.query("select id from hospital where hospital_code = ?", (rs, rowNum) -> rs.getLong("id"), hospitalCode);
-        if (!ids.isEmpty()) {
-            Long id = ids.get(0);
-            jdbcTemplate.update("update hospital set hospital_name = ?, city = ?, update_time = current_timestamp where id = ?", hospitalName, city, id);
-            return id;
+        HospitalEntity entity = hospitalMapper.selectOne(new QueryWrapper<HospitalEntity>()
+                .eq("hospital_code", hospitalCode)
+                .last("limit 1"));
+        if (entity == null) {
+            entity = new HospitalEntity();
+            entity.hospitalCode = hospitalCode;
+            entity.hospitalName = hospitalName;
+            entity.city = city;
+            entity.activeStatus = 1;
+            entity.deleted = 0;
+            hospitalMapper.insert(entity);
+            return entity.id == null ? 0L : entity.id;
         }
-        KeyHolder keyHolder = new GeneratedKeyHolder();
-        jdbcTemplate.update(connection -> {
-            PreparedStatement ps = connection.prepareStatement(
-                    "insert into hospital(hospital_code, hospital_name, city, active_status, deleted) values (?, ?, ?, 1, 0)",
-                    Statement.RETURN_GENERATED_KEYS
-            );
-            ps.setString(1, hospitalCode);
-            ps.setString(2, hospitalName);
-            ps.setString(3, city);
-            return ps;
-        }, keyHolder);
-        return extractGeneratedId(keyHolder);
+        hospitalMapper.update(null, new UpdateWrapper<HospitalEntity>()
+                .eq("id", entity.id)
+                .set("hospital_name", hospitalName)
+                .set("city", city)
+                .setSql("update_time = current_timestamp"));
+        return entity.id == null ? 0L : entity.id;
     }
 
     public long upsertDepartment(long hospitalId, String departmentName, String parentDepartmentName, String intro,
                                  String scope, String genderRule, Integer ageMin, Integer ageMax, String crowdTagsJson) {
-        List<Long> ids = jdbcTemplate.query(
-                "select id from hospital_department where hospital_id = ? and department_name = ? and deleted = 0",
-                (rs, rowNum) -> rs.getLong("id"),
-                hospitalId, departmentName
-        );
-        if (!ids.isEmpty()) {
-            Long id = ids.get(0);
-            jdbcTemplate.update("""
-                    update hospital_department
-                    set parent_department_name = ?, department_intro = ?, service_scope = ?, gender_rule = ?, age_min = ?, age_max = ?, crowd_tags_json = ?, update_time = current_timestamp
-                    where id = ?
-                    """, parentDepartmentName, intro, scope, genderRule, ageMin, ageMax, crowdTagsJson, id);
-            return id;
+        HospitalDepartmentEntity entity = hospitalDepartmentMapper.selectOne(new QueryWrapper<HospitalDepartmentEntity>()
+                .eq("hospital_id", hospitalId)
+                .eq("department_name", departmentName)
+                .eq("deleted", 0)
+                .last("limit 1"));
+        if (entity == null) {
+            entity = new HospitalDepartmentEntity();
+            entity.hospitalId = hospitalId;
+            entity.departmentName = departmentName;
+            entity.parentDepartmentName = parentDepartmentName;
+            entity.departmentIntro = intro;
+            entity.serviceScope = scope;
+            entity.activeStatus = 1;
+            entity.deleted = 0;
+            entity.genderRule = genderRule;
+            entity.ageMin = ageMin;
+            entity.ageMax = ageMax;
+            entity.crowdTagsJson = crowdTagsJson;
+            hospitalDepartmentMapper.insert(entity);
+            return entity.id == null ? 0L : entity.id;
         }
-        KeyHolder keyHolder = new GeneratedKeyHolder();
-        jdbcTemplate.update(connection -> {
-            PreparedStatement ps = connection.prepareStatement(
-                    "insert into hospital_department(hospital_id, department_name, parent_department_name, department_intro, service_scope, active_status, deleted, gender_rule, age_min, age_max, crowd_tags_json) values (?, ?, ?, ?, ?, 1, 0, ?, ?, ?, ?)",
-                    Statement.RETURN_GENERATED_KEYS
-            );
-            ps.setLong(1, hospitalId);
-            ps.setString(2, departmentName);
-            ps.setString(3, parentDepartmentName);
-            ps.setString(4, intro);
-            ps.setString(5, scope);
-            ps.setString(6, genderRule);
-            ps.setObject(7, ageMin);
-            ps.setObject(8, ageMax);
-            ps.setString(9, crowdTagsJson);
-            return ps;
-        }, keyHolder);
-        return extractGeneratedId(keyHolder);
+        hospitalDepartmentMapper.update(null, new UpdateWrapper<HospitalDepartmentEntity>()
+                .eq("id", entity.id)
+                .set("parent_department_name", parentDepartmentName)
+                .set("department_intro", intro)
+                .set("service_scope", scope)
+                .set("gender_rule", genderRule)
+                .set("age_min", ageMin)
+                .set("age_max", ageMax)
+                .set("crowd_tags_json", crowdTagsJson)
+                .setSql("update_time = current_timestamp"));
+        return entity.id == null ? 0L : entity.id;
     }
 
     public boolean capabilityExists(String capabilityCode) {
-        Integer count = jdbcTemplate.queryForObject(
-                "select count(1) from medical_capability_catalog where capability_code = ? and active_status = 1",
-                Integer.class,
-                capabilityCode
-        );
+        Long count = medicalCapabilityCatalogMapper.selectCount(new QueryWrapper<MedicalCapabilityCatalogEntity>()
+                .eq("capability_code", capabilityCode)
+                .eq("active_status", 1));
         return count != null && count > 0;
     }
 
@@ -188,44 +263,52 @@ public class BaseDataAdminRepository {
                                                    String supportLevel,
                                                    double weight,
                                                    String source) {
-        Integer count = jdbcTemplate.queryForObject(
-                "select count(1) from department_capability_rel where department_id = ? and capability_code = ?",
-                Integer.class,
-                departmentId,
-                capabilityCode
-        );
-        if (count != null && count > 0) {
-            jdbcTemplate.update(
-                    "update department_capability_rel set support_level = ?, weight = ?, source = ? where department_id = ? and capability_code = ?",
-                    supportLevel, weight, source, departmentId, capabilityCode
-            );
+        DepartmentCapabilityRelEntity entity = departmentCapabilityRelMapper.selectOne(new QueryWrapper<DepartmentCapabilityRelEntity>()
+                .eq("department_id", departmentId)
+                .eq("capability_code", capabilityCode)
+                .last("limit 1"));
+        if (entity == null) {
+            entity = new DepartmentCapabilityRelEntity();
+            entity.departmentId = departmentId;
+            entity.capabilityCode = capabilityCode;
+            entity.supportLevel = supportLevel;
+            entity.weight = BigDecimal.valueOf(weight);
+            entity.source = source;
+            departmentCapabilityRelMapper.insert(entity);
             return;
         }
-        jdbcTemplate.update(
-                "insert into department_capability_rel(department_id, capability_code, support_level, weight, source) values (?, ?, ?, ?, ?)",
-                departmentId, capabilityCode, supportLevel, weight, source
-        );
+        departmentCapabilityRelMapper.update(null, new UpdateWrapper<DepartmentCapabilityRelEntity>()
+                .eq("id", entity.id)
+                .set("support_level", supportLevel)
+                .set("weight", BigDecimal.valueOf(weight))
+                .set("source", source));
     }
 
     public Map<String, Integer> aggregateCounts() {
         Map<String, Integer> counts = new LinkedHashMap<>();
-        counts.put("diseases", queryCount("select count(1) from disease_master where deleted = 0"));
-        counts.put("disease_aliases", queryCount("select count(1) from disease_alias"));
-        counts.put("diseases_with_symptoms", queryCount("select count(1) from disease_master where deleted = 0 and symptom_keywords is not null and symptom_keywords <> '[]' and symptom_keywords <> ''"));
-        counts.put("disease_capability_mapped", queryCount("select count(distinct disease_code) from disease_capability_rel"));
-        counts.put("pending", queryCount("select count(1) from import_review_item where resolved = 0"));
-        counts.put("pending_department", queryCount("select count(1) from import_review_item where resolved = 0 and dataset_type = 'department'"));
-        counts.put("pending_disease", queryCount("select count(1) from import_review_item where resolved = 0 and dataset_type = 'disease'"));
-        counts.put("auto_mapped_departments", queryCount("select count(distinct department_id) from department_capability_rel where source like '%auto%'"));
+        counts.put("diseases", toInt(diseaseMasterMapper.selectCount(new QueryWrapper<DiseaseMasterEntity>().eq("deleted", 0))));
+        counts.put("disease_aliases", toInt(diseaseAliasMapper.selectCount(new QueryWrapper<>())));
+        counts.put("diseases_with_symptoms", toInt(diseaseMasterMapper.selectCount(new QueryWrapper<DiseaseMasterEntity>()
+                .eq("deleted", 0)
+                .isNotNull("symptom_keywords")
+                .ne("symptom_keywords", "[]")
+                .ne("symptom_keywords", ""))));
+        counts.put("disease_capability_mapped", distinctCount(diseaseCapabilityRelMapper, "count(distinct disease_code) as total", null));
+        counts.put("pending", toInt(importReviewItemMapper.selectCount(new QueryWrapper<ImportReviewItemEntity>().eq("resolved", 0))));
+        counts.put("pending_department", toInt(importReviewItemMapper.selectCount(new QueryWrapper<ImportReviewItemEntity>()
+                .eq("resolved", 0)
+                .eq("dataset_type", "department"))));
+        counts.put("pending_disease", toInt(importReviewItemMapper.selectCount(new QueryWrapper<ImportReviewItemEntity>()
+                .eq("resolved", 0)
+                .eq("dataset_type", "disease"))));
+        counts.put("auto_mapped_departments", distinctCount(departmentCapabilityRelMapper, "count(distinct department_id) as total", "source like '%auto%'"));
         return counts;
     }
 
     public int countPendingReviews(String datasetType, Long jobId) {
-        StringBuilder sql = new StringBuilder("select count(1) from import_review_item where resolved = 0");
-        List<Object> args = new ArrayList<>();
-        appendReviewFilters(sql, args, datasetType, jobId);
-        Integer count = jdbcTemplate.queryForObject(sql.toString(), Integer.class, args.toArray());
-        return count == null ? 0 : count;
+        QueryWrapper<ImportReviewItemEntity> wrapper = new QueryWrapper<ImportReviewItemEntity>().eq("resolved", 0);
+        appendReviewFilters(wrapper, datasetType, jobId);
+        return toInt(importReviewItemMapper.selectCount(wrapper));
     }
 
     public Map<String, Integer> countReviewTypes(Long jobId) {
@@ -233,173 +316,167 @@ public class BaseDataAdminRepository {
     }
 
     public Map<String, Integer> countReviewTypes(Long jobId, String datasetType) {
-        StringBuilder sql = new StringBuilder("""
-                select issue_type, count(1) as total
-                from import_review_item
-                where resolved = 0
-                """);
-        List<Object> args = new ArrayList<>();
+        QueryWrapper<ImportReviewItemEntity> wrapper = new QueryWrapper<ImportReviewItemEntity>()
+                .select("issue_type", "count(1) as total")
+                .eq("resolved", 0);
         if (jobId != null) {
-            sql.append(" and job_id = ?");
-            args.add(jobId);
+            wrapper.eq("job_id", jobId);
         }
         if (datasetType != null && !datasetType.isBlank()) {
-            sql.append(" and dataset_type = ?");
-            args.add(datasetType);
+            wrapper.eq("dataset_type", datasetType);
         }
-        sql.append(" group by issue_type order by total desc, issue_type asc");
-        return jdbcTemplate.query(sql.toString(), rs -> {
-            Map<String, Integer> result = new LinkedHashMap<>();
-            while (rs.next()) {
-                result.put(rs.getString("issue_type"), rs.getInt("total"));
-            }
-            return result;
-        }, args.toArray());
+        wrapper.groupBy("issue_type").last("order by total desc, issue_type asc");
+        Map<String, Integer> result = new LinkedHashMap<>();
+        for (Map<String, Object> row : importReviewItemMapper.selectMaps(wrapper)) {
+            result.put(value(row.get("issue_type")), number(row.get("total")));
+        }
+        return result;
     }
 
     public Map<String, Integer> countFailureTypes(Long jobId) {
-        return jdbcTemplate.query("""
-                select error_message, count(1) as total
-                from import_failure_log
-                where job_id = ?
-                group by error_message
-                order by total desc, error_message asc
-                """, rs -> {
-            Map<String, Integer> result = new LinkedHashMap<>();
-            while (rs.next()) {
-                result.put(rs.getString("error_message"), rs.getInt("total"));
-            }
-            return result;
-        }, jobId);
+        QueryWrapper<ImportFailureLogEntity> wrapper = new QueryWrapper<ImportFailureLogEntity>()
+                .select("error_message", "count(1) as total")
+                .eq("job_id", jobId)
+                .groupBy("error_message")
+                .last("order by total desc, error_message asc");
+        Map<String, Integer> result = new LinkedHashMap<>();
+        for (Map<String, Object> row : importFailureLogMapper.selectMaps(wrapper)) {
+            result.put(value(row.get("error_message")), number(row.get("total")));
+        }
+        return result;
     }
 
     public List<ImportReviewItemRecord> findPendingReviews(String datasetType, Long jobId, int limit) {
-        StringBuilder sql = new StringBuilder("""
-                select id, job_id, dataset_type, item_key, issue_type, raw_content, suggestion, resolved
-                from import_review_item
-                where resolved = 0
-                """);
-        List<Object> args = new ArrayList<>();
-        appendReviewFilters(sql, args, datasetType, jobId);
-        sql.append(" order by id desc limit ?");
-        args.add(limit);
-        return jdbcTemplate.query(sql.toString(), (rs, rowNum) -> new ImportReviewItemRecord(
-                rs.getLong("id"),
-                rs.getLong("job_id"),
-                rs.getString("dataset_type"),
-                rs.getString("item_key"),
-                rs.getString("issue_type"),
-                rs.getString("raw_content"),
-                rs.getString("suggestion"),
-                rs.getBoolean("resolved")
-        ), args.toArray());
+        QueryWrapper<ImportReviewItemEntity> wrapper = new QueryWrapper<ImportReviewItemEntity>()
+                .eq("resolved", 0);
+        appendReviewFilters(wrapper, datasetType, jobId);
+        wrapper.orderByDesc("id").last("limit " + limit);
+        return importReviewItemMapper.selectList(wrapper).stream()
+                .map(this::toImportReviewItemRecord)
+                .toList();
     }
 
     public int resolveReviewItem(Long reviewId, String resolutionNote) {
-        return jdbcTemplate.update(
-                "update import_review_item set resolved = 1, resolution_note = ?, update_time = current_timestamp where id = ? and resolved = 0",
-                resolutionNote, reviewId
-        );
+        return importReviewItemMapper.update(null, new UpdateWrapper<ImportReviewItemEntity>()
+                .eq("id", reviewId)
+                .eq("resolved", 0)
+                .set("resolved", 1)
+                .set("resolution_note", resolutionNote)
+                .setSql("update_time = current_timestamp"));
     }
 
     public List<ImportJobRecord> findRecentJobs(int limit) {
-        return jdbcTemplate.query("""
-                select id, dataset_type, file_name, status, success_count, failure_count, review_count, auto_mapped_count, message
-                from import_job_record
-                order by id desc
-                limit ?
-                """, (rs, rowNum) -> new ImportJobRecord(
-                rs.getLong("id"),
-                rs.getString("dataset_type"),
-                rs.getString("file_name"),
-                rs.getString("status"),
-                rs.getInt("success_count"),
-                rs.getInt("failure_count"),
-                rs.getInt("review_count"),
-                rs.getInt("auto_mapped_count"),
-                rs.getString("message")
-        ), limit);
+        return importJobRecordMapper.selectList(new QueryWrapper<ImportJobRecordEntity>()
+                        .orderByDesc("id")
+                        .last("limit " + limit))
+                .stream()
+                .map(this::toImportJobRecord)
+                .toList();
     }
 
     public ImportJobRecord findJobById(Long jobId) {
-        List<ImportJobRecord> jobs = jdbcTemplate.query("""
-                select id, dataset_type, file_name, status, success_count, failure_count, review_count, auto_mapped_count, message
-                from import_job_record
-                where id = ?
-                """, (rs, rowNum) -> new ImportJobRecord(
-                rs.getLong("id"),
-                rs.getString("dataset_type"),
-                rs.getString("file_name"),
-                rs.getString("status"),
-                rs.getInt("success_count"),
-                rs.getInt("failure_count"),
-                rs.getInt("review_count"),
-                rs.getInt("auto_mapped_count"),
-                rs.getString("message")
-        ), jobId);
-        return jobs.isEmpty() ? null : jobs.getFirst();
+        ImportJobRecordEntity entity = importJobRecordMapper.selectById(jobId);
+        return entity == null ? null : toImportJobRecord(entity);
     }
 
     public List<ImportFailureLogRecord> findFailuresByJobId(Long jobId, int limit) {
-        return jdbcTemplate.query("""
-                select id, job_id, `row_number`, raw_content, error_message
-                from import_failure_log
-                where job_id = ?
-                order by id asc
-                limit ?
-                """, (rs, rowNum) -> new ImportFailureLogRecord(
-                rs.getLong("id"),
-                rs.getLong("job_id"),
-                rs.getInt("row_number"),
-                rs.getString("raw_content"),
-                rs.getString("error_message")
-        ), jobId, limit);
+        return importFailureLogMapper.selectList(new QueryWrapper<ImportFailureLogEntity>()
+                        .eq("job_id", jobId)
+                        .orderByAsc("id")
+                        .last("limit " + limit))
+                .stream()
+                .map(this::toImportFailureLogRecord)
+                .toList();
     }
 
     public List<ImportReviewItemRecord> findRecentReviewsByJobId(Long jobId, int limit) {
-        return jdbcTemplate.query("""
-                select id, job_id, dataset_type, item_key, issue_type, raw_content, suggestion, resolved
-                from import_review_item
-                where job_id = ?
-                order by id desc
-                limit ?
-                """, (rs, rowNum) -> new ImportReviewItemRecord(
-                rs.getLong("id"),
-                rs.getLong("job_id"),
-                rs.getString("dataset_type"),
-                rs.getString("item_key"),
-                rs.getString("issue_type"),
-                rs.getString("raw_content"),
-                rs.getString("suggestion"),
-                rs.getBoolean("resolved")
-        ), jobId, limit);
+        return importReviewItemMapper.selectList(new QueryWrapper<ImportReviewItemEntity>()
+                        .eq("job_id", jobId)
+                        .orderByDesc("id")
+                        .last("limit " + limit))
+                .stream()
+                .map(this::toImportReviewItemRecord)
+                .toList();
     }
 
-    private void appendReviewFilters(StringBuilder sql, List<Object> args, String datasetType, Long jobId) {
+    private void appendReviewFilters(QueryWrapper<ImportReviewItemEntity> wrapper, String datasetType, Long jobId) {
         if (datasetType != null && !datasetType.isBlank()) {
-            sql.append(" and dataset_type = ?");
-            args.add(datasetType);
+            wrapper.eq("dataset_type", datasetType);
         }
         if (jobId != null) {
-            sql.append(" and job_id = ?");
-            args.add(jobId);
+            wrapper.eq("job_id", jobId);
         }
     }
 
-    private long extractGeneratedId(KeyHolder keyHolder) {
-        if (keyHolder.getKeyList().isEmpty()) {
-            return 0L;
-        }
-        Object id = keyHolder.getKeyList().get(0).get("id");
-        if (id instanceof Number number) {
-            return number.longValue();
-        }
-        Number fallback = keyHolder.getKey();
-        return fallback == null ? 0L : fallback.longValue();
+    private ImportJobRecord toImportJobRecord(ImportJobRecordEntity entity) {
+        return new ImportJobRecord(
+                entity.id,
+                entity.datasetType,
+                entity.fileName,
+                entity.status,
+                entity.successCount,
+                entity.failureCount,
+                entity.reviewCount,
+                entity.autoMappedCount,
+                entity.message
+        );
     }
 
-    private int queryCount(String sql) {
-        Integer count = jdbcTemplate.queryForObject(sql, Integer.class);
-        return count == null ? 0 : count;
+    private ImportFailureLogRecord toImportFailureLogRecord(ImportFailureLogEntity entity) {
+        return new ImportFailureLogRecord(
+                entity.id,
+                entity.jobId,
+                entity.rowNumber,
+                entity.rawContent,
+                entity.errorMessage
+        );
+    }
+
+    private ImportReviewItemRecord toImportReviewItemRecord(ImportReviewItemEntity entity) {
+        return new ImportReviewItemRecord(
+                entity.id,
+                entity.jobId,
+                entity.datasetType,
+                entity.itemKey,
+                entity.issueType,
+                entity.rawContent,
+                entity.suggestion,
+                entity.resolved != null && entity.resolved == 1
+        );
+    }
+
+    private int distinctCount(Object mapper, String selectSql, String customSegment) {
+        List<Map<String, Object>> rows;
+        if (mapper instanceof DiseaseCapabilityRelMapper diseaseMapper) {
+            QueryWrapper<DiseaseCapabilityRelEntity> wrapper = new QueryWrapper<DiseaseCapabilityRelEntity>().select(selectSql);
+            if (customSegment != null) {
+                wrapper.apply(customSegment);
+            }
+            rows = diseaseMapper.selectMaps(wrapper);
+        } else if (mapper instanceof DepartmentCapabilityRelMapper departmentMapper) {
+            QueryWrapper<DepartmentCapabilityRelEntity> wrapper = new QueryWrapper<DepartmentCapabilityRelEntity>().select(selectSql);
+            if (customSegment != null) {
+                wrapper.apply(customSegment);
+            }
+            rows = departmentMapper.selectMaps(wrapper);
+        } else {
+            return 0;
+        }
+        if (rows.isEmpty()) {
+            return 0;
+        }
+        return number(rows.get(0).get("total"));
+    }
+
+    private int toInt(Long value) {
+        return value == null ? 0 : value.intValue();
+    }
+
+    private int number(Object value) {
+        return value instanceof Number number ? number.intValue() : 0;
+    }
+
+    private String value(Object value) {
+        return value == null ? "" : value.toString();
     }
 }

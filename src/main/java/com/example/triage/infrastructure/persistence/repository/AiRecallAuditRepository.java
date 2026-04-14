@@ -1,7 +1,8 @@
 package com.example.triage.infrastructure.persistence.repository;
 
+import com.example.triage.infrastructure.persistence.entity.AiRecallAuditLogEntity;
+import com.example.triage.infrastructure.persistence.mapper.AiRecallAuditLogMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -9,11 +10,11 @@ import java.util.List;
 @Repository
 public class AiRecallAuditRepository {
 
-    private final JdbcTemplate jdbcTemplate;
+    private final AiRecallAuditLogMapper aiRecallAuditLogMapper;
     private final ObjectMapper objectMapper;
 
-    public AiRecallAuditRepository(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
-        this.jdbcTemplate = jdbcTemplate;
+    public AiRecallAuditRepository(AiRecallAuditLogMapper aiRecallAuditLogMapper, ObjectMapper objectMapper) {
+        this.aiRecallAuditLogMapper = aiRecallAuditLogMapper;
         this.objectMapper = objectMapper;
     }
 
@@ -26,22 +27,17 @@ public class AiRecallAuditRepository {
                      List<String> suggestedCodes,
                      String status,
                      String message) {
-        jdbcTemplate.update("""
-                        insert into ai_recall_audit_log(
-                            symptoms, gender, age, age_group, eligible_disease_count,
-                            rule_candidate_codes_json, suggested_codes_json, status, message
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """,
-                symptoms,
-                gender,
-                age,
-                ageGroup,
-                eligibleDiseaseCount,
-                toJson(ruleCandidateCodes),
-                toJson(suggestedCodes),
-                status,
-                message
-        );
+        AiRecallAuditLogEntity entity = new AiRecallAuditLogEntity();
+        entity.symptoms = symptoms;
+        entity.gender = gender;
+        entity.age = age;
+        entity.ageGroup = ageGroup;
+        entity.eligibleDiseaseCount = eligibleDiseaseCount;
+        entity.ruleCandidateCodesJson = toJson(ruleCandidateCodes);
+        entity.suggestedCodesJson = toJson(suggestedCodes);
+        entity.status = status;
+        entity.message = message;
+        aiRecallAuditLogMapper.insert(entity);
     }
 
     private String toJson(List<String> values) {
