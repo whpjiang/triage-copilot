@@ -15,6 +15,14 @@ public record DepartmentMappingRecord(
         String capabilityCode,
         String supportLevel,
         Double weight,
-        String source
+        String source,
+        String districtName,
+        Double latitude,
+        Double longitude,
+        String standardDeptCode,
+        String subspecialtyCode,
+        Integer isEmergency,
+        Double authorityScore,
+        String hospitalLevel
 ) {
 }

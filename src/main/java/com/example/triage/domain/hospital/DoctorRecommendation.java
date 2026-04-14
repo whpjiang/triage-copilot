@@ -7,6 +7,8 @@ public record DoctorRecommendation(
         String hospitalName,
         String departmentName,
         String specialtyText,
+        String campusName,
+        Double authorityScore,
         double score
 ) {
 }

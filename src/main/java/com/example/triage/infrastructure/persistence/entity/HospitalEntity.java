@@ -10,6 +10,12 @@ public class HospitalEntity {
     public String hospitalCode;
     public String hospitalName;
     public String city;
+    public String districtName;
+    public Double latitude;
+    public Double longitude;
+    public String hospitalLevel;
+    public Integer isEmergency;
+    public Double authorityScore;
     public Integer activeStatus;
     public Integer deleted;
 }

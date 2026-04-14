@@ -1,38 +1,58 @@
 package com.example.triage.application.dto;
 
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
+public class TriageChatRequest {
 
-public class TriageAssessRequest {
-
-    @NotBlank(message = "symptoms cannot be blank")
-    private String symptoms;
-
+    private String sessionId;
+    private String userId;
+    private String dialogId;
+    private String message;
+    private String patientInfo;
     private String gender;
-
-    @Min(value = 0, message = "age cannot be negative")
-    @Max(value = 120, message = "age is too large")
     private Integer age;
-
-    private String specialCondition;
-
     private String city;
-
     private String area;
-
     private Boolean nearby;
-
     private Double latitude;
-
     private Double longitude;
 
-    public String getSymptoms() {
-        return symptoms;
+    public String getSessionId() {
+        return sessionId;
     }
 
-    public void setSymptoms(String symptoms) {
-        this.symptoms = symptoms;
+    public void setSessionId(String sessionId) {
+        this.sessionId = sessionId;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public String getDialogId() {
+        return dialogId;
+    }
+
+    public void setDialogId(String dialogId) {
+        this.dialogId = dialogId;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
+    public String getPatientInfo() {
+        return patientInfo;
+    }
+
+    public void setPatientInfo(String patientInfo) {
+        this.patientInfo = patientInfo;
     }
 
     public String getGender() {
@@ -49,14 +69,6 @@ public class TriageAssessRequest {
 
     public void setAge(Integer age) {
         this.age = age;
-    }
-
-    public String getSpecialCondition() {
-        return specialCondition;
-    }
-
-    public void setSpecialCondition(String specialCondition) {
-        this.specialCondition = specialCondition;
     }
 
     public String getCity() {

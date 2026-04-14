@@ -3,9 +3,11 @@ package com.example.triage.application.service;
 import com.example.triage.domain.capability.CapabilityRecommendation;
 import com.example.triage.domain.hospital.DepartmentRecommendation;
 import com.example.triage.domain.population.PopulationProfile;
+import com.example.triage.domain.triage.RecommendationContext;
 import com.example.triage.infrastructure.persistence.model.DepartmentMappingRecord;
 import com.example.triage.infrastructure.persistence.repository.HospitalDataRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -25,15 +27,23 @@ public class LocalDepartmentMappingService {
 
     private final HospitalDataRepository hospitalDataRepository;
     private final DiseaseNormalizeService diseaseNormalizeService;
+    private final RecommendationPolicyService recommendationPolicyService;
 
-    public LocalDepartmentMappingService(HospitalDataRepository hospitalDataRepository, DiseaseNormalizeService diseaseNormalizeService) {
+    public LocalDepartmentMappingService(HospitalDataRepository hospitalDataRepository,
+                                         DiseaseNormalizeService diseaseNormalizeService,
+                                         RecommendationPolicyService recommendationPolicyService) {
         this.hospitalDataRepository = hospitalDataRepository;
         this.diseaseNormalizeService = diseaseNormalizeService;
+        this.recommendationPolicyService = recommendationPolicyService;
     }
 
-    public List<DepartmentRecommendation> mapDepartments(List<CapabilityRecommendation> capabilities, PopulationProfile profile, String city) {
+    public List<DepartmentRecommendation> mapDepartments(List<CapabilityRecommendation> capabilities,
+                                                         PopulationProfile profile,
+                                                         String city,
+                                                         RecommendationContext context) {
         List<String> capabilityCodes = capabilities.stream().map(CapabilityRecommendation::capabilityCode).toList();
-        Map<String, CapabilityRecommendation> capabilityMap = capabilities.stream().collect(Collectors.toMap(CapabilityRecommendation::capabilityCode, Function.identity()));
+        Map<String, CapabilityRecommendation> capabilityMap = capabilities.stream()
+                .collect(Collectors.toMap(CapabilityRecommendation::capabilityCode, Function.identity()));
         List<DepartmentMappingRecord> mappings = hospitalDataRepository.findDepartmentMappings(capabilityCodes, city);
         Map<Long, DepartmentRecommendation> result = new LinkedHashMap<>();
         for (DepartmentMappingRecord mapping : mappings) {
@@ -49,7 +59,31 @@ public class LocalDepartmentMappingService {
                 continue;
             }
             double supportWeight = SUPPORT_LEVEL_WEIGHT.getOrDefault(mapping.supportLevel(), 0.5);
-            double score = capability.score() * (mapping.weight() == null ? 1D : mapping.weight()) + supportWeight;
+            double clinicalMatchScore = recommendationPolicyService.normalizeClinicalScore(
+                    capability.score() * (mapping.weight() == null ? 1D : mapping.weight())
+            );
+            double authorityScore = recommendationPolicyService.normalizeAuthorityScore(mapping.authorityScore());
+            double distanceScore = recommendationPolicyService.calculateDistanceScore(
+                    context.area(),
+                    context.latitude(),
+                    context.longitude(),
+                    mapping.districtName(),
+                    mapping.latitude(),
+                    mapping.longitude()
+            );
+            if (StringUtils.hasText(context.area())
+                    && StringUtils.hasText(mapping.districtName())
+                    && !context.area().equalsIgnoreCase(mapping.districtName())
+                    && distanceScore < 0.5D) {
+                distanceScore = 0.2D;
+            }
+            double score = recommendationPolicyService.calculateDepartmentScore(
+                    clinicalMatchScore,
+                    authorityScore,
+                    distanceScore,
+                    recommendationPolicyService.normalizeProfileFit(supportWeight),
+                    context
+            );
             DepartmentRecommendation recommendation = new DepartmentRecommendation(
                     mapping.departmentId(),
                     mapping.hospitalName(),
@@ -57,6 +91,10 @@ public class LocalDepartmentMappingService {
                     mapping.parentDepartmentName(),
                     mapping.capabilityCode(),
                     mapping.supportLevel(),
+                    mapping.districtName(),
+                    mapping.latitude(),
+                    mapping.longitude(),
+                    mapping.authorityScore(),
                     score
             );
             result.compute(mapping.departmentId(), (key, existing) -> existing == null || recommendation.score() > existing.score() ? recommendation : existing);

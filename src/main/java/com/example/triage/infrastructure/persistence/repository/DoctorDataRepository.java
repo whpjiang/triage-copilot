@@ -22,4 +22,8 @@ public class DoctorDataRepository {
         }
         return doctorProfileMapper.selectDoctorsByDepartmentIds(departmentIds);
     }
+
+    public List<DoctorRecord> searchDoctorsByQuery(String city, String area, String query) {
+        return doctorProfileMapper.selectDoctorsByQuery(city, area, query);
+    }
 }

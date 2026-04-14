@@ -14,6 +14,13 @@ public record DoctorRecord(
         String capabilityCode,
         Double weight,
         String hospitalName,
-        String departmentName
+        String departmentName,
+        String districtName,
+        Double latitude,
+        Double longitude,
+        Double authorityScore,
+        Double academicTitleScore,
+        Integer isExpert,
+        String campusName
 ) {
 }

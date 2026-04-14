@@ -16,5 +16,9 @@ public class DoctorProfileEntity {
     public Integer ageMin;
     public Integer ageMax;
     public String crowdTagsJson;
+    public Double authorityScore;
+    public Double academicTitleScore;
+    public Integer isExpert;
+    public String campusName;
     public Integer activeStatus;
 }

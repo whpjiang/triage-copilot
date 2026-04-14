@@ -7,6 +7,10 @@ public record DepartmentRecommendation(
         String parentDepartmentName,
         String capabilityCode,
         String supportLevel,
+        String districtName,
+        Double latitude,
+        Double longitude,
+        Double authorityScore,
         double score
 ) {
 }

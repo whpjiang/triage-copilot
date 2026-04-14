@@ -1,8 +1,10 @@
 package com.example.triage.infrastructure.ai;
 
 import com.example.triage.application.service.DiseaseNormalizeService;
+import com.example.triage.application.service.SeverityStratificationService;
 import com.example.triage.domain.disease.DiseaseCandidate;
 import com.example.triage.domain.population.PopulationProfile;
+import com.example.triage.domain.triage.SeverityLevel;
 import com.example.triage.infrastructure.persistence.model.DiseaseRecord;
 import com.example.triage.infrastructure.persistence.repository.AiRecallAuditRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -24,15 +26,18 @@ public class AiDiseaseRecallClient {
     private final ObjectMapper objectMapper;
     private final DiseaseNormalizeService diseaseNormalizeService;
     private final AiRecallAuditRepository aiRecallAuditRepository;
+    private final SeverityStratificationService severityStratificationService;
 
     public AiDiseaseRecallClient(DashScopeCompatibleClient dashScopeCompatibleClient,
                                  ObjectMapper objectMapper,
                                  DiseaseNormalizeService diseaseNormalizeService,
-                                 AiRecallAuditRepository aiRecallAuditRepository) {
+                                 AiRecallAuditRepository aiRecallAuditRepository,
+                                 SeverityStratificationService severityStratificationService) {
         this.dashScopeCompatibleClient = dashScopeCompatibleClient;
         this.objectMapper = objectMapper;
         this.diseaseNormalizeService = diseaseNormalizeService;
         this.aiRecallAuditRepository = aiRecallAuditRepository;
+        this.severityStratificationService = severityStratificationService;
     }
 
     public List<String> suggestDiseaseCodes(String symptoms,
@@ -44,7 +49,7 @@ public class AiDiseaseRecallClient {
             audit(symptoms, profile, eligibleDiseases, ruleCandidates, List.of(), "SKIPPED_EMPTY", "empty symptoms or no eligible diseases");
             return List.of();
         }
-        if (isHighRisk(normalizedSymptoms)) {
+        if (severityStratificationService.assess(normalizedSymptoms, profile.age(), profile.gender()).severityLevel() == SeverityLevel.EMERGENT) {
             audit(symptoms, profile, eligibleDiseases, ruleCandidates, List.of(), "SKIPPED_HIGH_RISK", "high-risk symptoms require rule-based handling");
             return List.of();
         }
@@ -148,30 +153,6 @@ public class AiDiseaseRecallClient {
             }
         }
         return score;
-    }
-
-    private boolean isHighRisk(String symptoms) {
-        return containsAny(symptoms,
-                "剧烈胸痛", "持续胸闷", "窒息感", "呼吸急促", "呼吸困难",
-                "昏厥", "昏迷", "抽搐", "偏瘫", "言语不清",
-                "呕血", "黑便", "大出血", "剧烈腹痛",
-                "高热不退", "精神差", "嗜睡", "喂养困难", "拒食",
-                "孕妇腹痛", "阴道流血", "胎动异常",
-                "突发头痛", "一侧肢体无力", "视物不清", "视物模糊", "意识障碍", "口角歪斜", "一侧无力",
-                "血便", "严重腹痛",
-                "chest pain", "shortness of breath", "syncope", "convulsion",
-                "major bleeding", "hematemesis", "melena", "severe abdominal pain",
-                "severe headache", "blurred vision", "altered mental status");
-    }
-
-    private boolean containsAny(String text, String... keywords) {
-        String normalized = text.toLowerCase(Locale.ROOT);
-        for (String keyword : keywords) {
-            if (normalized.contains(keyword.toLowerCase(Locale.ROOT))) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private void audit(String symptoms,

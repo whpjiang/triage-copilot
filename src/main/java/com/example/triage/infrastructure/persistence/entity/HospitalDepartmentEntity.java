@@ -18,4 +18,14 @@ public class HospitalDepartmentEntity {
     public Integer ageMin;
     public Integer ageMax;
     public String crowdTagsJson;
+    public String standardDeptCode;
+    public String subspecialtyCode;
+    public String districtName;
+    public Double latitude;
+    public Double longitude;
+    public Integer isEmergency;
+    public Double nationalKeyScore;
+    public Double provincialKeyScore;
+    public Double cityKeyScore;
+    public Double authorityScore;
 }

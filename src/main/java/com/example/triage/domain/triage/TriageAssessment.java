@@ -15,6 +15,8 @@ public record TriageAssessment(
         List<CapabilityRecommendation> capabilityRecommendations,
         List<DepartmentRecommendation> departmentRecommendations,
         List<DoctorRecommendation> doctorRecommendations,
-        String explanation
+        String explanation,
+        boolean commonDisease,
+        RouteType routeType
 ) {
 }
